@@ -45,8 +45,12 @@ export interface VideoEvaluation {
 export interface RepositoryEvaluation {
   score: number;
   comments: string;
-  aiPromptUsed: string;
+  aiPromptUsed?: string;
   aiAnalysis?: string;
+  codeQuality?: number;
+  documentation?: number;
+  functionality?: number;
+  gitUsage?: number;
   evaluatedBy: string;
   evaluatedAt: Date;
 }
@@ -95,6 +99,10 @@ export interface ProjectDTO {
       score: number;
       comments: string;
       aiAnalysis?: string;
+      codeQuality?: number;
+      documentation?: number;
+      functionality?: number;
+      gitUsage?: number;
       evaluatedBy: string;
       evaluatedAt: string;
     };
@@ -249,7 +257,7 @@ export interface SessionData {
 
 export interface ApiSuccessResponse<T = any> {
   success: true;
-  data: T;
+  data?: T;
   message?: string;
 }
 
@@ -367,9 +375,13 @@ export function dateToISOString(date: Date): string {
 }
 
 export function convertUserToDTO(user: User): UserDTO {
+  // Handle legacy users with 'role' field instead of 'roles'
+  // @ts-ignore - handle legacy field
+  const roles = user.roles || (user.role ? [user.role] : ['pending']);
+
   return {
     email: user.email,
-    roles: user.roles,
+    roles: roles,
     name: user.name,
     createdAt: dateToISOString(user.createdAt),
     updatedAt: dateToISOString(user.updatedAt),
@@ -408,6 +420,10 @@ export function convertProjectToDTO(project: Project): ProjectDTO {
                 score: project.evaluations.repository.score,
                 comments: project.evaluations.repository.comments,
                 aiAnalysis: project.evaluations.repository.aiAnalysis,
+                codeQuality: project.evaluations.repository.codeQuality,
+                documentation: project.evaluations.repository.documentation,
+                functionality: project.evaluations.repository.functionality,
+                gitUsage: project.evaluations.repository.gitUsage,
                 evaluatedBy: project.evaluations.repository.evaluatedBy,
                 evaluatedAt: dateToISOString(
                   project.evaluations.repository.evaluatedAt

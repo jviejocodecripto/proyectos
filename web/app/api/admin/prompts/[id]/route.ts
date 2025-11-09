@@ -7,6 +7,7 @@ import {
   deletePrompt
 } from '@/lib/db/prompts';
 import { convertPromptToDTO } from '@/types';
+import { getFirstError } from '@/lib/utils/validation';
 
 // Validation schema for updating prompts
 const updatePromptSchema = z.object({
@@ -83,7 +84,7 @@ export async function PATCH(
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: error.errors[0].message },
+        { success: false, error: getFirstError(error) },
         { status: 400 }
       );
     }

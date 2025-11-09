@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import UserTable from '@/components/admin/UserTable';
 import UserFilters from '@/components/admin/UserFilters';
+import UserFormModal from '@/components/admin/UserFormModal';
 import type { UserDTO, UserRole, PaginatedResponse } from '@/types';
 
 export default function AdminUsersPage() {
@@ -25,6 +26,9 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserDTO | null>(null);
+  const [deletingUser, setDeletingUser] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -138,6 +142,104 @@ export default function AdminUsersPage() {
     setPagination((prev) => ({ ...prev, page: newPage }));
   };
 
+  const handleCreateUser = () => {
+    setEditingUser(null);
+    setIsFormModalOpen(true);
+  };
+
+  const handleEditUser = (user: UserDTO) => {
+    setEditingUser(user);
+    setIsFormModalOpen(true);
+  };
+
+  const handleSaveUser = async (userData: {
+    email: string;
+    name: string;
+    roles: UserRole[];
+    isActive: boolean;
+  }) => {
+    try {
+      if (editingUser) {
+        // Update existing user
+        const response = await fetch(
+          `/api/admin/users/${encodeURIComponent(editingUser.email)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: userData.name,
+              roles: userData.roles,
+              isActive: userData.isActive
+            })
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Error al actualizar usuario');
+        }
+
+        setSuccessMessage(data.message || 'Usuario actualizado correctamente');
+      } else {
+        // Create new user
+        const response = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userData)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Error al crear usuario');
+        }
+
+        setSuccessMessage(data.message || 'Usuario creado correctamente');
+      }
+
+      setTimeout(() => setSuccessMessage(null), 3000);
+      await fetchUsers();
+      setIsFormModalOpen(false);
+      setEditingUser(null);
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const handleDeleteUser = async (email: string) => {
+    if (!confirm(`¿Está seguro de eliminar al usuario ${email}?`)) {
+      return;
+    }
+
+    try {
+      setDeletingUser(email);
+      const response = await fetch(
+        `/api/admin/users/${encodeURIComponent(email)}`,
+        {
+          method: 'DELETE'
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al eliminar usuario');
+      }
+
+      setSuccessMessage(data.message || 'Usuario eliminado correctamente');
+      setTimeout(() => setSuccessMessage(null), 3000);
+
+      // Refresh users list
+      await fetchUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setDeletingUser(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -150,6 +252,25 @@ export default function AdminUsersPage() {
             Administra usuarios, roles y permisos del sistema
           </p>
         </div>
+        <button
+          onClick={handleCreateUser}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          Crear Usuario
+        </button>
       </div>
 
       {/* Success/Error Messages */}
@@ -202,7 +323,20 @@ export default function AdminUsersPage() {
         users={users}
         onUpdateRoles={handleUpdateRoles}
         onToggleStatus={handleToggleStatus}
+        onEdit={handleEditUser}
+        onDelete={handleDeleteUser}
         loading={loading}
+      />
+
+      {/* User Form Modal */}
+      <UserFormModal
+        user={editingUser}
+        isOpen={isFormModalOpen}
+        onClose={() => {
+          setIsFormModalOpen(false);
+          setEditingUser(null);
+        }}
+        onSave={handleSaveUser}
       />
 
       {/* Pagination */}

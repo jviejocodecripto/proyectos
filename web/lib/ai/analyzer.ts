@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getRepositoryInfo } from '@/lib/github/client';
 import { getActivePrompt } from '@/lib/db/prompts';
+import type { RepositoryInfo } from '@/types';
 
 export interface AIAnalysisResult {
   analysis: string;
@@ -199,8 +200,8 @@ export async function analyzeRepository(
     }
 
     // Prepare languages string
-    const languages = repoInfo.languages
-      ? repoInfo.languages.join(', ')
+    const languages = repoInfo.stats?.languages
+      ? Object.keys(repoInfo.stats.languages).join(', ')
       : 'Not detected';
 
     // Replace all template variables

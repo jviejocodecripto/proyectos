@@ -7,6 +7,8 @@ interface UserTableProps {
   users: UserDTO[];
   onUpdateRoles: (email: string, roles: UserRole[]) => Promise<void>;
   onToggleStatus: (email: string, isActive: boolean) => Promise<void>;
+  onEdit: (user: UserDTO) => void;
+  onDelete: (email: string) => void;
   loading?: boolean;
 }
 
@@ -28,6 +30,8 @@ export default function UserTable({
   users,
   onUpdateRoles,
   onToggleStatus,
+  onEdit,
+  onDelete,
   loading = false
 }: UserTableProps) {
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
@@ -156,7 +160,7 @@ export default function UserTable({
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-wrap gap-1">
-                    {user.roles.map(role => (
+                    {(user.roles || []).map(role => (
                       <span
                         key={role}
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[role]}`}
@@ -196,12 +200,20 @@ export default function UserTable({
                   {updatingUser === user.email ? (
                     <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                   ) : (
-                    <button
-                      onClick={() => handleOpenRoleEditor(user)}
-                      className="text-blue-600 hover:text-blue-900 font-medium"
-                    >
-                      Editar Roles
-                    </button>
+                    <div className="flex justify-end gap-3">
+                      <button
+                        onClick={() => onEdit(user)}
+                        className="text-blue-600 hover:text-blue-900 font-medium"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => onDelete(user.email)}
+                        className="text-red-600 hover:text-red-900 font-medium"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>

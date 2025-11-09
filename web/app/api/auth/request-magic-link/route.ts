@@ -41,8 +41,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(response, { status: 403 });
     }
 
-    // Check if user has pending role
-    if (user.role === 'pending') {
+    // Check if user has only pending role
+    if (user.roles.length === 1 && user.roles.includes('pending')) {
       const response: ApiResponse = {
         success: false,
         error:

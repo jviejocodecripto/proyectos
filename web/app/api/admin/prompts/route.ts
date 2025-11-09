@@ -6,6 +6,7 @@ import {
   createPrompt
 } from '@/lib/db/prompts';
 import { convertPromptToDTO } from '@/types';
+import { getFirstError } from '@/lib/utils/validation';
 
 // Validation schema for creating prompts
 const createPromptSchema = z.object({
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: error.errors[0].message },
+        { success: false, error: getFirstError(error) },
         { status: 400 }
       );
     }

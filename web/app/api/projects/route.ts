@@ -25,7 +25,11 @@ export async function GET(req: NextRequest) {
     const queryParams: any = { page, limit };
 
     // Students can only see their own projects
-    if (user.role === 'student') {
+    const isStudent = user.roles.includes('student') &&
+                      !user.roles.includes('teacher') &&
+                      !user.roles.includes('admin');
+
+    if (isStudent) {
       queryParams.studentEmail = user.email;
     }
 
@@ -87,11 +91,16 @@ export async function POST(req: NextRequest) {
     let studentEmail: string;
     let validatedData: any;
 
-    if (user.role === 'student') {
+    const isStudent = user.roles.includes('student') &&
+                      !user.roles.includes('teacher') &&
+                      !user.roles.includes('admin');
+    const isTeacherOrAdmin = user.roles.includes('teacher') || user.roles.includes('admin');
+
+    if (isStudent) {
       // Students create projects for themselves
       validatedData = createProjectSchema.parse(body);
       studentEmail = user.email;
-    } else if (user.role === 'teacher' || user.role === 'admin') {
+    } else if (isTeacherOrAdmin) {
       // Teachers and admins must specify student email
       validatedData = createProjectAsTeacherSchema.parse(body);
       studentEmail = validatedData.studentEmail;

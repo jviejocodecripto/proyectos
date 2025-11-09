@@ -40,10 +40,11 @@ export async function GET(
     // Check permissions
     // Students can only view their own projects
     // Teachers and admins can view all projects
-    if (
-      user.role === 'student' &&
-      project.studentEmail !== user.email
-    ) {
+    const isStudent = user.roles.includes('student') &&
+                      !user.roles.includes('teacher') &&
+                      !user.roles.includes('admin');
+
+    if (isStudent && project.studentEmail !== user.email) {
       const response: ApiResponse = {
         success: false,
         error: 'No tienes permiso para ver este proyecto',
@@ -112,7 +113,11 @@ export async function PATCH(
     }
 
     // Check permissions based on role
-    if (user.role === 'student') {
+    const isStudent = user.roles.includes('student') &&
+                      !user.roles.includes('teacher') &&
+                      !user.roles.includes('admin');
+
+    if (isStudent) {
       // Students can only update their own projects
       if (project.studentEmail !== user.email) {
         const response: ApiResponse = {
@@ -234,7 +239,11 @@ export async function DELETE(
     }
 
     // Check permissions based on role
-    if (user.role === 'student') {
+    const isStudent = user.roles.includes('student') &&
+                      !user.roles.includes('teacher') &&
+                      !user.roles.includes('admin');
+
+    if (isStudent) {
       // Students can only delete their own projects
       if (project.studentEmail !== user.email) {
         const response: ApiResponse = {

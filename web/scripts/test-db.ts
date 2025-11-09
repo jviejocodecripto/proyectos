@@ -40,7 +40,7 @@ async function testConnection() {
     const admin = await findUserByEmail('admin@example.com');
     if (admin) {
       console.log(`✅ Admin user found: ${admin.name} (${admin.email})`);
-      console.log(`   Role: ${admin.role}`);
+      console.log(`   Roles: ${admin.roles.join(', ')}`);
       console.log(`   Active: ${admin.isActive}`);
     } else {
       console.log('❌ Admin user not found');

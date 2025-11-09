@@ -47,11 +47,15 @@ export async function GET(req: NextRequest) {
     // Update last login
     await updateLastLogin(user.email);
 
+    // Handle legacy users with 'role' field instead of 'roles'
+    // @ts-ignore - handle legacy field
+    const roles = user.roles || (user.role ? [user.role] : ['pending']);
+
     // Create session
-    await createSession(user.email, user.roles);
+    await createSession(user.email, roles);
 
     // Redirect based on primary role (first role in array)
-    const primaryRole = user.roles[0] || 'pending';
+    const primaryRole = roles[0] || 'pending';
     const redirectMap: Record<string, string> = {
       admin: '/admin',
       teacher: '/teacher',

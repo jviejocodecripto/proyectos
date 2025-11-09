@@ -41,9 +41,19 @@ export async function getCurrentUser(): Promise<SessionData | null> {
     return null;
   }
 
+  // Handle legacy sessions with single 'role' field
+  let roles = session.roles || [];
+  if (!roles || roles.length === 0) {
+    // @ts-ignore - handle legacy 'role' field
+    const legacyRole = session.role;
+    if (legacyRole) {
+      roles = [legacyRole];
+    }
+  }
+
   return {
     email: session.email,
-    roles: session.roles || [],
+    roles: roles,
     isLoggedIn: session.isLoggedIn
   };
 }

@@ -21,7 +21,7 @@ export const loginSchema = z.object({
 // ============================================================================
 
 export const userRoleSchema = z.enum(['pending', 'student', 'teacher', 'admin'], {
-  errorMap: () => ({ message: 'Rol inválido' })
+  message: 'Rol inválido'
 });
 
 export const updateUserRolesSchema = z.object({
@@ -34,7 +34,15 @@ export const updateUserStatusSchema = z.object({
 
 export const createUserSchema = z.object({
   email: z.string().email('Email inválido').toLowerCase(),
-  name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres')
+  name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres'),
+  roles: z.array(userRoleSchema).min(1, 'Debe tener al menos un rol').default(['pending']),
+  isActive: z.boolean().default(true)
+});
+
+export const updateUserSchema = z.object({
+  name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres').optional(),
+  roles: z.array(userRoleSchema).min(1, 'Debe tener al menos un rol').optional(),
+  isActive: z.boolean().optional()
 });
 
 // ============================================================================
@@ -234,7 +242,7 @@ export function safeValidate<T>(
 export function formatZodError(error: z.ZodError): Record<string, string> {
   const formatted: Record<string, string> = {};
 
-  error.errors.forEach((err) => {
+  error.issues.forEach((err) => {
     const path = err.path.join('.');
     formatted[path] = err.message;
   });
@@ -246,8 +254,8 @@ export function formatZodError(error: z.ZodError): Record<string, string> {
  * Get first error message from Zod error
  */
 export function getFirstError(error: z.ZodError): string {
-  if (!error.errors || error.errors.length === 0) {
+  if (!error.issues || error.issues.length === 0) {
     return 'Datos inválidos';
   }
-  return error.errors[0]?.message || 'Datos inválidos';
+  return error.issues[0]?.message || 'Datos inválidos';
 }

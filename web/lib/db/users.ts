@@ -31,6 +31,31 @@ export async function createUser(email: string, name: string): Promise<User> {
 }
 
 /**
+ * Create new user with custom roles and status (admin only)
+ */
+export async function createUserWithRoles(
+  email: string,
+  name: string,
+  roles: UserRole[],
+  isActive: boolean = true
+): Promise<User> {
+  const collection = await getCollection<User>('users');
+
+  const user: Omit<User, '_id'> = {
+    email,
+    name,
+    roles,
+    isActive,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    lastLogin: null
+  };
+
+  const result = await collection.insertOne(user as any);
+  return { ...user, _id: result.insertedId };
+}
+
+/**
  * Update user roles
  */
 export async function updateUserRoles(
@@ -66,6 +91,32 @@ export async function updateUserStatus(
     {
       $set: {
         isActive,
+        updatedAt: new Date()
+      }
+    }
+  );
+
+  return result.modifiedCount > 0;
+}
+
+/**
+ * Update user data (name, roles, status)
+ */
+export async function updateUser(
+  email: string,
+  updates: {
+    name?: string;
+    roles?: UserRole[];
+    isActive?: boolean;
+  }
+): Promise<boolean> {
+  const collection = await getCollection<User>('users');
+
+  const result = await collection.updateOne(
+    { email },
+    {
+      $set: {
+        ...updates,
         updatedAt: new Date()
       }
     }
