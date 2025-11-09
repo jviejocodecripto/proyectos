@@ -9,7 +9,8 @@
     "lint": "eslint",
     "db:setup": "mongosh < ../scripts/setup-db.js",
     "db:seed": "mongosh < ../scripts/seed-db.js",
-    "db:init": "npm run db:setup && npm run db:seed"
+    "db:init": "npm run db:setup && npm run db:seed",
+    "test:email": "tsx scripts/test-email.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
@@ -21,6 +22,7 @@
     "nodemailer": "^7.0.10",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "resend": "^6.4.2",
     "zod": "^4.1.12"
   },
   "devDependencies": {

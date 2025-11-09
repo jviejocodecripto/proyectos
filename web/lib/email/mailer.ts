@@ -1,29 +1,46 @@
 import nodemailer, { Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 
-if (!process.env.SMTP_HOST) {
-  throw new Error('SMTP_HOST must be set in .env.local');
+// Determine which email service to use
+const useResend = process.env.RESEND_API_KEY && process.env.NODE_ENV === 'production';
+
+// Initialize Resend for production
+let resend: Resend | null = null;
+if (useResend) {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY must be set in production');
+  }
+  if (!process.env.EMAIL_FROM) {
+    throw new Error('EMAIL_FROM must be set');
+  }
+  resend = new Resend(process.env.RESEND_API_KEY);
 }
 
-if (!process.env.SMTP_PORT) {
-  throw new Error('SMTP_PORT must be set in .env.local');
-}
+// Initialize Nodemailer for development
+let transporter: Transporter | null = null;
+if (!useResend) {
+  if (!process.env.SMTP_HOST) {
+    throw new Error('SMTP_HOST must be set in .env.local for development');
+  }
+  if (!process.env.SMTP_PORT) {
+    throw new Error('SMTP_PORT must be set in .env.local for development');
+  }
+  if (!process.env.EMAIL_FROM) {
+    throw new Error('EMAIL_FROM must be set in .env.local');
+  }
 
-if (!process.env.EMAIL_FROM) {
-  throw new Error('EMAIL_FROM must be set in .env.local');
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: false,
+    auth: process.env.SMTP_USER
+      ? {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      : undefined
+  });
 }
-
-// Create reusable transporter
-const transporter: Transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: false, // true for 465, false for other ports
-  auth: process.env.SMTP_USER
-    ? {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    : undefined
-});
 
 /**
  * Send magic link email
@@ -154,13 +171,26 @@ Si no solicitaste este acceso, puedes ignorar este correo de forma segura.
 Sistema de Gestión de Proyectos Académicos
   `;
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: 'Tu enlace de acceso - Sistema de Proyectos',
-    text,
-    html
-  });
+  // Use Resend in production, Nodemailer in development
+  if (useResend && resend) {
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM!,
+      to: email,
+      subject: 'Tu enlace de acceso - Sistema de Proyectos',
+      text,
+      html
+    });
+  } else if (transporter) {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: 'Tu enlace de acceso - Sistema de Proyectos',
+      text,
+      html
+    });
+  } else {
+    throw new Error('No email service configured');
+  }
 }
 
 /**
@@ -286,13 +316,26 @@ Accede aquí: ${appUrl}/login
 Sistema de Gestión de Proyectos Académicos
   `;
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: '¡Bienvenido al Sistema de Proyectos!',
-    text,
-    html
-  });
+  // Use Resend in production, Nodemailer in development
+  if (useResend && resend) {
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM!,
+      to: email,
+      subject: '¡Bienvenido al Sistema de Proyectos!',
+      text,
+      html
+    });
+  } else if (transporter) {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: '¡Bienvenido al Sistema de Proyectos!',
+      text,
+      html
+    });
+  } else {
+    throw new Error('No email service configured');
+  }
 }
 
 /**
@@ -300,8 +343,14 @@ Sistema de Gestión de Proyectos Académicos
  */
 export async function testEmailConnection(): Promise<boolean> {
   try {
-    await transporter.verify();
-    return true;
+    if (useResend && resend) {
+      // Resend doesn't have a verify method, so we just check if it's initialized
+      return true;
+    } else if (transporter) {
+      await transporter.verify();
+      return true;
+    }
+    return false;
   } catch (error) {
     console.error('Email connection test failed:', error);
     return false;
