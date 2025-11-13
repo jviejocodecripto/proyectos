@@ -1,33 +1,62 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ProjectDTO } from '@/types';
+import type { ProjectDTO, UserDTO } from '@/types';
 
 interface ProjectFormProps {
   project?: ProjectDTO;
   mode: 'create' | 'edit';
   redirectPath?: string;
   userRole?: 'student' | 'teacher' | 'admin';
+  userEmail?: string;
 }
 
 export default function ProjectForm({
   project,
   mode,
   redirectPath = '/student/projects',
-  userRole = 'student'
+  userRole = 'student',
+  userEmail = ''
 }: ProjectFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [students, setStudents] = useState<UserDTO[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
   const [formData, setFormData] = useState({
     name: project?.name || '',
     repositoryUrl: project?.repositoryUrl || '',
     videoUrl: project?.videoUrl || '',
     course: project?.course || '',
     edition: project?.edition || '',
-    studentEmail: project?.studentEmail || ''
+    studentEmail: project?.studentEmail || userEmail
   });
+
+  // Fetch students list if user is teacher/admin creating a project
+  useEffect(() => {
+    if ((userRole === 'teacher' || userRole === 'admin') && mode === 'create') {
+      fetchStudents();
+    }
+  }, [userRole, mode]);
+
+  const fetchStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const response = await fetch('/api/students');
+      const data = await response.json();
+
+      if (data.success) {
+        setStudents(data.data);
+      } else {
+        console.error('Error fetching students:', data.error);
+      }
+    } catch (err) {
+      console.error('Error fetching students:', err);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
 
   const validateGitHubUrl = (url: string): boolean => {
     const githubPattern = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+\/?$/;
@@ -117,7 +146,8 @@ export default function ProjectForm({
         edition: formData.edition
       };
 
-      // Include studentEmail only for teachers/admins when creating
+      // Include studentEmail ONLY for teachers/admins when creating
+      // For students, the API uses the authenticated user's email automatically
       if ((userRole === 'teacher' || userRole === 'admin') && mode === 'create') {
         dataToSend.studentEmail = formData.studentEmail;
       }
@@ -201,29 +231,91 @@ export default function ProjectForm({
         </p>
       </div>
 
-      {/* Student Email - Only for teachers/admins when creating */}
-      {(userRole === 'teacher' || userRole === 'admin') && mode === 'create' && (
+      {/* Student Email - Different display based on role */}
+      {mode === 'create' && (
         <div>
           <label
             htmlFor="studentEmail"
             className="block text-sm font-medium text-gray-700 mb-2"
           >
-            Email del Estudiante *
+            {userRole === 'student' ? 'Tu Email' : 'Estudiante'} *
           </label>
-          <input
-            id="studentEmail"
-            type="email"
-            value={formData.studentEmail}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, studentEmail: e.target.value }))
-            }
-            placeholder="estudiante@ejemplo.com"
-            disabled={loading}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Email del estudiante al que pertenece este proyecto
-          </p>
+
+          {/* Student View - Read-only email */}
+          {userRole === 'student' && (
+            <>
+              <div className="w-full px-4 py-2 border-2 border-green-200 rounded-lg bg-green-50 text-gray-700 font-medium">
+                {userEmail || formData.studentEmail}
+              </div>
+              <p className="mt-1 text-xs text-green-700 flex items-center">
+                <svg
+                  className="w-4 h-4 mr-1"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Este proyecto se creará a tu nombre
+              </p>
+            </>
+          )}
+
+          {/* Teacher/Admin View - Dropdown selector */}
+          {(userRole === 'teacher' || userRole === 'admin') && (
+            <>
+              {loadingStudents ? (
+                <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 flex items-center">
+                  <svg
+                    className="animate-spin h-4 w-4 text-blue-600 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Cargando estudiantes...
+                </div>
+              ) : (
+                <select
+                  id="studentEmail"
+                  value={formData.studentEmail}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, studentEmail: e.target.value }))
+                  }
+                  disabled={loading || loadingStudents}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  required
+                >
+                  <option value="">Selecciona un estudiante...</option>
+                  {students.map((student) => (
+                    <option key={student.email} value={student.email}>
+                      {student.name} ({student.email})
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                {students.length > 0
+                  ? `${students.length} estudiante${students.length > 1 ? 's' : ''} disponible${students.length > 1 ? 's' : ''}`
+                  : 'Selecciona el estudiante al que pertenece este proyecto'}
+              </p>
+            </>
+          )}
         </div>
       )}
 

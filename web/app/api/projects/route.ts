@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json();
+    console.log('POST /api/projects - Body received:', JSON.stringify(body, null, 2));
 
     // Determine student email and validate based on role
     let studentEmail: string;
@@ -144,9 +145,14 @@ export async function POST(req: NextRequest) {
 
     // Handle validation errors
     if (error instanceof z.ZodError) {
+      console.error('Validation error details:', JSON.stringify(error.issues, null, 2));
+      const firstIssue = error.issues[0];
+      const fieldPath = firstIssue.path.join('.');
+      const errorMessage = fieldPath ? `${fieldPath}: ${firstIssue.message}` : firstIssue.message;
+      
       const response: ApiResponse = {
         success: false,
-        error: getFirstError(error),
+        error: errorMessage,
         code: 'VALIDATION_ERROR'
       };
       return NextResponse.json(response, { status: 400 });

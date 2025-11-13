@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import RoleSwitcher from '@/components/layout/RoleSwitcher';
 import type { UserDTO } from '@/types';
 
 export default function AdminLayout({
@@ -240,12 +241,12 @@ export default function AdminLayout({
 
       {/* Main content */}
       <div className="lg:pl-64">
-        {/* Mobile header */}
-        <div className="sticky top-0 z-10 bg-white shadow-sm lg:hidden">
-          <div className="h-16 flex items-center justify-between px-4">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-white shadow-sm">
+          <div className="h-16 flex items-center justify-between px-4 lg:px-8">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 lg:hidden"
             >
               <svg
                 className="w-6 h-6"
@@ -261,8 +262,11 @@ export default function AdminLayout({
                 />
               </svg>
             </button>
-            <span className="text-lg font-bold text-gray-900">Admin</span>
-            <div className="w-10" /> {/* Spacer */}
+            <span className="text-lg font-bold text-gray-900 lg:hidden">Admin</span>
+            <div className="hidden lg:block" /> {/* Spacer for desktop */}
+            
+            {/* Role Switcher */}
+            {user && <RoleSwitcher userRoles={user.roles} />}
           </div>
         </div>
 
