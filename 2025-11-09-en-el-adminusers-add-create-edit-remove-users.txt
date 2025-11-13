@@ -1,0 +1,494 @@
+
+ ▐▛███▜▌   Claude Code v2.0.36
+▝▜█████▛▘  Sonnet 4.5 · Claude Pro
+  ▘▘ ▝▝    /Users/joseviejo/2025/cc/PROYECTOS
+
+> en el admin/users add create, edit, remove users 
+
+⏺ I'll help you add create, edit, and remove functionality for users in the admin section. Let me first
+  examine the current implementation.
+
+⏺ Read(web/app/(dashboard)/admin/users/page.tsx)
+  ⎿  Read 239 lines
+
+⏺ Read(web/components/admin/UserTable.tsx)
+  ⎿  Read 271 lines
+
+⏺ Search(pattern: "**/api/admin/users/**/*.ts")
+  ⎿  Found 3 files (ctrl+o to expand)
+
+⏺ Read(web/app/api/admin/users/route.ts)
+  ⎿  Read 82 lines
+
+⏺ Read(web/app/api/admin/users/[email]/role/route.ts)
+  ⎿  Read 141 lines
+
+⏺ Read(web/types/index.ts)
+  ⎿  Read 531 lines
+
+⏺ Read(web/lib/db/users.ts)
+  ⎿  Read 184 lines
+
+⏺ Read(web/lib/utils/validation.ts)
+  ⎿  Read 254 lines
+
+⏺ Now I'll implement the create, edit, and delete functionality for users. Let me start with the API
+  routes.
+
+⏺ Update(web/lib/utils/validation.ts)
+  ⎿  Updated web/lib/utils/validation.ts with 9 additions and 1 removal                       
+       34    
+       35    export const createUserSchema = z.object({
+       36      email: z.string().email('Email inválido').toLowerCase(),
+       37 -    name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres')
+       37 +    name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres'),
+       38 +    roles: z.array(userRoleSchema).min(1, 'Debe tener al menos un 
+          + rol').default(['pending']),
+       39 +    isActive: z.boolean().default(true)
+       40    });
+       41    
+       42 +  export const updateUserSchema = z.object({
+       43 +    name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres').optional(),
+       44 +    roles: z.array(userRoleSchema).min(1, 'Debe tener al menos un rol').optional(),
+       45 +    isActive: z.boolean().optional()
+       46 +  });
+       47 +  
+       48    // ============================================================================
+       49    // PROJECT SCHEMAS
+       50    // ============================================================================
+
+⏺ Update(web/lib/db/users.ts)
+  ⎿  Updated web/lib/db/users.ts with 25 additions                       
+       31    }
+       32    
+       33    /**
+       34 +   * Create new user with custom roles and status (admin only)
+       35 +   */
+       36 +  export async function createUserWithRoles(
+       37 +    email: string,
+       38 +    name: string,
+       39 +    roles: UserRole[],
+       40 +    isActive: boolean = true
+       41 +  ): Promise<User> {
+       42 +    const collection = await getCollection<User>('users');
+       43 +  
+       44 +    const user: Omit<User, '_id'> = {
+       45 +      email,
+       46 +      name,
+       47 +      roles,
+       48 +      isActive,
+       49 +      createdAt: new Date(),
+       50 +      updatedAt: new Date(),
+       51 +      lastLogin: null
+       52 +    };
+       53 +  
+       54 +    const result = await collection.insertOne(user as any);
+       55 +    return { ...user, _id: result.insertedId };
+       56 +  }
+       57 +  
+       58 +  /**
+       59     * Update user roles
+       60     */
+       61    export async function updateUserRoles(
+
+⏺ Update(web/lib/db/users.ts)
+  ⎿  Updated web/lib/db/users.ts with 26 additions                                    
+       100    }
+       101    
+       102    /**
+       103 +   * Update user data (name, roles, status)
+       104 +   */
+       105 +  export async function updateUser(
+       106 +    email: string,
+       107 +    updates: {
+       108 +      name?: string;
+       109 +      roles?: UserRole[];
+       110 +      isActive?: boolean;
+       111 +    }
+       112 +  ): Promise<boolean> {
+       113 +    const collection = await getCollection<User>('users');
+       114 +  
+       115 +    const result = await collection.updateOne(
+       116 +      { email },
+       117 +      {
+       118 +        $set: {
+       119 +          ...updates,
+       120 +          updatedAt: new Date()
+       121 +        }
+       122 +      }
+       123 +    );
+       124 +  
+       125 +    return result.modifiedCount > 0;
+       126 +  }
+       127 +  
+       128 +  /**
+       129     * Update last login timestamp
+       130     */
+       131    export async function updateLastLogin(email: string): Promise<boolean> {
+
+⏺ Update(web/app/api/admin/users/route.ts)
+  ⎿  Updated web/app/api/admin/users/route.ts with 2 additions and 2 removals                
+       1    import { NextRequest, NextResponse } from 'next/server';
+       2    import { requireRole } from '@/lib/auth/session';
+       3 -  import { findUsers } from '@/lib/db/users';
+       3 +  import { findUsers, findUserByEmail, createUserWithRoles } from '@/lib/db/users';
+       4    import { convertUserToDTO } from '@/types';
+       5 -  import { userQuerySchema, getFirstError } from '@/lib/utils/validation';
+       5 +  import { userQuerySchema, createUserSchema, 
+         +  getFirstError } from '@/lib/utils/validation';
+       6    import { z } from 'zod';
+       7    import type { ApiResponse, UserDTO, PaginatedResponse } from '@/types';
+       8    
+
+⏺ Update(web/app/api/admin/users/route.ts)
+  ⎿  Updated web/app/api/admin/users/route.ts with 73 additions                                
+        79        return NextResponse.json(response, { status: 500 });
+        80      }
+        81    }
+        82 +  
+        83 +  export async function POST(req: NextRequest) {
+        84 +    try {
+        85 +      // Require admin role
+        86 +      await requireRole(['admin']);
+        87 +  
+        88 +      // Get and validate request body
+        89 +      const body = await req.json();
+        90 +      const { email, name, roles, isActive } = createUserSchema.parse(body);
+        91 +  
+        92 +      // Check if user already exists
+        93 +      const existingUser = await findUserByEmail(email);
+        94 +  
+        95 +      if (existingUser) {
+        96 +        const response: ApiResponse = {
+        97 +          success: false,
+        98 +          error: 'El usuario ya existe',
+        99 +          code: 'USER_EXISTS'
+       100 +        };
+       101 +        return NextResponse.json(response, { status: 400 });
+       102 +      }
+       103 +  
+       104 +      // Create user
+       105 +      const newUser = await createUserWithRoles(email, name, roles, isActive);
+       106 +  
+       107 +      // Return success response
+       108 +      const response: ApiResponse<UserDTO> = {
+       109 +        success: true,
+       110 +        data: convertUserToDTO(newUser),
+       111 +        message: 'Usuario creado correctamente'
+       112 +      };
+       113 +  
+       114 +      return NextResponse.json(response, { status: 201 });
+       115 +    } catch (error) {
+       116 +      // Handle authorization errors
+       117 +      if (error instanceof Error && error.message === 'Authentication required') {
+       118 +        const response: ApiResponse = {
+       119 +          success: false,
+       120 +          error: 'No autenticado',
+       121 +          code: 'UNAUTHORIZED'
+       122 +        };
+       123 +        return NextResponse.json(response, { status: 401 });
+       124 +      }
+       125 +  
+       126 +      if (error instanceof Error && error.message === 'Insufficient permissions') {
+       127 +        const response: ApiResponse = {
+       128 +          success: false,
+       129 +          error: 'No autorizado. Se requiere rol de administrador.',
+       130 +          code: 'FORBIDDEN'
+       131 +        };
+       132 +        return NextResponse.json(response, { status: 403 });
+       133 +      }
+       134 +  
+       135 +      // Handle validation errors
+       136 +      if (error instanceof z.ZodError) {
+       137 +        const response: ApiResponse = {
+       138 +          success: false,
+       139 +          error: getFirstError(error),
+       140 +          code: 'VALIDATION_ERROR'
+       141 +        };
+       142 +        return NextResponse.json(response, { status: 400 });
+       143 +      }
+       144 +  
+       145 +      // Handle other errors
+       146 +      console.error('Error in POST /api/admin/users:', error);
+       147 +      const response: ApiResponse = {
+       148 +        success: false,
+       149 +        error: 'Error del servidor',
+       150 +        code: 'SERVER_ERROR'
+       151 +      };
+       152 +      return NextResponse.json(response, { status: 500 });
+       153 +    }
+       154 +  }
+
+⏺ Now let me create the API route for updating and deleting individual users:
+
+⏺ Search(pattern: "**/api/admin/users/\[email\]/route.ts")
+  ⎿  Found 0 files 
+
+⏺ Write(web/app/api/admin/users/[email]/route.ts)
+  ⎿  Wrote 183 lines to web/app/api/admin/users/[email]/route.ts              
+     import { NextRequest, NextResponse } from 'next/server';
+     import { requireRole } from '@/lib/auth/session';
+     import { findUserByEmail, updateUser, deleteUser } from '@/lib/db/users';
+     import { convertUserToDTO } from '@/types';
+     import { updateUserSchema, getFirstError } from '@/lib/utils/validation';
+     import { z } from 'zod';
+     import type { ApiResponse, UserDTO } from '@/types';
+     export async function PATCH(
+       req: NextRequest,
+     … +173 lines (ctrl+o to expand)
+
+⏺ Write(web/components/admin/UserFormModal.tsx)
+  ⎿  Wrote 228 lines to web/components/admin/UserFormModal.tsx
+     'use client';
+     import { useState, useEffect } from 'react';
+     import type { UserDTO, UserRole } from '@/types';
+     interface UserFormModalProps {
+       user?: UserDTO | null;
+       isOpen: boolean;
+       onClose: () => void;
+       onSave: (userData: {
+     … +218 lines (ctrl+o to expand)
+
+⏺ Now let me update the UserTable component to add edit and delete functionality:
+
+⏺ Update(web/components/admin/UserTable.tsx)
+  ⎿  Updated web/components/admin/UserTable.tsx with 2 additions                   
+        7      users: UserDTO[];
+        8      onUpdateRoles: (email: string, roles: UserRole[]) => Promise<void>;
+        9      onToggleStatus: (email: string, isActive: boolean) => Promise<void>;
+       10 +    onEdit: (user: UserDTO) => void;
+       11 +    onDelete: (email: string) => void;
+       12      loading?: boolean;
+       13    }
+       14    
+
+⏺ Update(web/components/admin/UserTable.tsx)
+  ⎿  Updated web/components/admin/UserTable.tsx with 2 additions                     
+       30      users,
+       31      onUpdateRoles,
+       32      onToggleStatus,
+       33 +    onEdit,
+       34 +    onDelete,
+       35      loading = false
+       36    }: UserTableProps) {
+       37      const [updatingUser, setUpdatingUser] = useState<string | null>(null);
+
+⏺ Update(web/components/admin/UserTable.tsx)
+  ⎿  Updated web/components/admin/UserTable.tsx with 14 additions and 6 removals                 
+       200                      {updatingUser === user.email ? (
+       201                        <div className="inline-block animate-spin rounded-full h-4 w-4 
+             border-b-2 border-blue-600"></div>
+       202                      ) : (
+       203 -                      <button
+       204 -                        onClick={() => handleOpenRoleEditor(user)}
+       205 -                        className="text-blue-600 hover:text-blue-900 font-medium"
+       206 -                      >
+       207 -                        Editar Roles
+       208 -                      </button>
+       203 +                      <div className="flex justify-end gap-3">
+       204 +                        <button
+       205 +                          onClick={() => onEdit(user)}
+       206 +                          className="text-blue-600 hover:text-blue-900 font-medium"
+       207 +                        >
+       208 +                          Editar
+       209 +                        </button>
+       210 +                        <button
+       211 +                          onClick={() => onDelete(user.email)}
+       212 +                          className="text-red-600 hover:text-red-900 font-medium"
+       213 +                        >
+       214 +                          Eliminar
+       215 +                        </button>
+       216 +                      </div>
+       217                      )}
+       218                    </td>
+       219                  </tr>
+
+⏺ Now let me update the admin users page to add the create, edit, and delete functionality:
+
+⏺ Update(web/app/(dashboard)/admin/users/page.tsx)
+  ⎿  Updated web/app/(dashboard)/admin/users/page.tsx with 1 addition            
+        4    import { useRouter } from 'next/navigation';
+        5    import UserTable from '@/components/admin/UserTable';
+        6    import UserFilters from '@/components/admin/UserFilters';
+        7 +  import UserFormModal from '@/components/admin/UserFormModal';
+        8    import type { UserDTO, UserRole, PaginatedResponse } from '@/types';
+        9    
+       10    export default function AdminUsersPage() {
+
+⏺ Update(web/app/(dashboard)/admin/users/page.tsx)
+  ⎿  Updated web/app/(dashboard)/admin/users/page.tsx with 3 additions                   
+       26      const [loading, setLoading] = useState(true);
+       27      const [error, setError] = useState<string | null>(null);
+       28      const [successMessage, setSuccessMessage] = useState<string | null>(null);
+       29 +    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+       30 +    const [editingUser, setEditingUser] = useState<UserDTO | null>(null);
+       31 +    const [deletingUser, setDeletingUser] = useState<string | null>(null);
+       32    
+       33      const fetchUsers = useCallback(async () => {
+       34        try {
+
+⏺ Update(web/app/(dashboard)/admin/users/page.tsx)
+  ⎿  Updated web/app/(dashboard)/admin/users/page.tsx with 98 additions                      
+       142        setPagination((prev) => ({ ...prev, page: newPage }));
+       143      };
+       144    
+       145 +    const handleCreateUser = () => {
+       146 +      setEditingUser(null);
+       147 +      setIsFormModalOpen(true);
+       148 +    };
+       149 +  
+       150 +    const handleEditUser = (user: UserDTO) => {
+       151 +      setEditingUser(user);
+       152 +      setIsFormModalOpen(true);
+       153 +    };
+       154 +  
+       155 +    const handleSaveUser = async (userData: {
+       156 +      email: string;
+       157 +      name: string;
+       158 +      roles: UserRole[];
+       159 +      isActive: boolean;
+       160 +    }) => {
+       161 +      try {
+       162 +        if (editingUser) {
+       163 +          // Update existing user
+       164 +          const response = await fetch(
+       165 +            `/api/admin/users/${encodeURIComponent(editingUser.email)}`,
+       166 +            {
+       167 +              method: 'PATCH',
+       168 +              headers: { 'Content-Type': 'application/json' },
+       169 +              body: JSON.stringify({
+       170 +                name: userData.name,
+       171 +                roles: userData.roles,
+       172 +                isActive: userData.isActive
+       173 +              })
+       174 +            }
+       175 +          );
+       176 +  
+       177 +          const data = await response.json();
+       178 +  
+       179 +          if (!response.ok) {
+       180 +            throw new Error(data.error || 'Error al actualizar usuario');
+       181 +          }
+       182 +  
+       183 +          setSuccessMessage(data.message || 'Usuario actualizado correctamente');
+       184 +        } else {
+       185 +          // Create new user
+       186 +          const response = await fetch('/api/admin/users', {
+       187 +            method: 'POST',
+       188 +            headers: { 'Content-Type': 'application/json' },
+       189 +            body: JSON.stringify(userData)
+       190 +          });
+       191 +  
+       192 +          const data = await response.json();
+       193 +  
+       194 +          if (!response.ok) {
+       195 +            throw new Error(data.error || 'Error al crear usuario');
+       196 +          }
+       197 +  
+       198 +          setSuccessMessage(data.message || 'Usuario creado correctamente');
+       199 +        }
+       200 +  
+       201 +        setTimeout(() => setSuccessMessage(null), 3000);
+       202 +        await fetchUsers();
+       203 +        setIsFormModalOpen(false);
+       204 +        setEditingUser(null);
+       205 +      } catch (err) {
+       206 +        throw err;
+       207 +      }
+       208 +    };
+       209 +  
+       210 +    const handleDeleteUser = async (email: string) => {
+       211 +      if (!confirm(`¿Está seguro de eliminar al usuario ${email}?`)) {
+       212 +        return;
+       213 +      }
+       214 +  
+       215 +      try {
+       216 +        setDeletingUser(email);
+       217 +        const response = await fetch(
+       218 +          `/api/admin/users/${encodeURIComponent(email)}`,
+       219 +          {
+       220 +            method: 'DELETE'
+       221 +          }
+       222 +        );
+       223 +  
+       224 +        const data = await response.json();
+       225 +  
+       226 +        if (!response.ok) {
+       227 +          throw new Error(data.error || 'Error al eliminar usuario');
+       228 +        }
+       229 +  
+       230 +        setSuccessMessage(data.message || 'Usuario eliminado correctamente');
+       231 +        setTimeout(() => setSuccessMessage(null), 3000);
+       232 +  
+       233 +        // Refresh users list
+       234 +        await fetchUsers();
+       235 +      } catch (err) {
+       236 +        setError(err instanceof Error ? err.message : 'Error desconocido');
+       237 +        setTimeout(() => setError(null), 3000);
+       238 +      } finally {
+       239 +        setDeletingUser(null);
+       240 +      }
+       241 +    };
+       242 +  
+       243      return (
+       244        <div className="space-y-6">
+       245          {/* Header */}
+
+⏺ Update(web/app/(dashboard)/admin/users/page.tsx)
+  ⎿  Updated web/app/(dashboard)/admin/users/page.tsx with 19 additions                    
+       252                Administra usuarios, roles y permisos del sistema
+       253              </p>
+       254            </div>
+       255 +          <button
+       256 +            onClick={handleCreateUser}
+       257 +            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium 
+           + hover:bg-blue-700 transition flex items-center gap-2"
+       258 +          >
+       259 +            <svg
+       260 +              className="w-5 h-5"
+       261 +              fill="none"
+       262 +              stroke="currentColor"
+       263 +              viewBox="0 0 24 24"
+       264 +            >
+       265 +              <path
+       266 +                strokeLinecap="round"
+       267 +                strokeLinejoin="round"
+       268 +                strokeWidth={2}
+       269 +                d="M12 4v16m8-8H4"
+       270 +              />
+       271 +            </svg>
+       272 +            Crear Usuario
+       273 +          </button>
+       274          </div>
+       275    
+       276          {/* Success/Error Messages */}
+
+⏺ Update(web/app/(dashboard)/admin/users/page.tsx)
+  ⎿  Updated web/app/(dashboard)/admin/users/page.tsx with 13 additions     
+       323            users={users}
+       324            onUpdateRoles={handleUpdateRoles}
+       325            onToggleStatus={handleToggleStatus}
+       326 +          onEdit={handleEditUser}
+       327 +          onDelete={handleDeleteUser}
+       328            loading={loading}
+       329          />
+       330    
+       331 +        {/* User Form Modal */}
+       332 +        <UserFormModal
+       333 +          user={editingUser}
+       334 +          isOpen={isFormModalOpen}
+       335 +          onClose={() => {
+       336 +            setIsFormModalOpen(false);
+       337 +            setEditingUser(null);
+       338 +          }}
+       339 +          onSave={handleSaveUser}
+       340 +        />
+       341 +  
+       342          {/* Pagination */}
+       343          {pagination.totalPages > 1 && (
+       344            <div className="bg-white rounded-lg shadow px-6 py-4">
+  ⎿  Session limit reached ∙ resets 1pm
+     /upgrade to increase your usage limit.
+
+
+

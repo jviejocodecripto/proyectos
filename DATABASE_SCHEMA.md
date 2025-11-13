@@ -15,7 +15,7 @@ Almacena información de todos los usuarios del sistema (students, teachers, adm
 {
   _id: ObjectId("507f1f77bcf86cd799439011"),
   email: "alumno@example.com",
-  role: "student",                    // "pending" | "student" | "teacher" | "admin"
+  roles: ["student"],                 // Array of: "pending" | "student" | "teacher" | "admin"
   name: "Juan Pérez",
   createdAt: ISODate("2025-01-15T10:00:00Z"),
   updatedAt: ISODate("2025-01-15T10:00:00Z"),
@@ -27,7 +27,7 @@ Almacena información de todos los usuarios del sistema (students, teachers, adm
 **Índices:**
 ```javascript
 db.users.createIndex({ email: 1 }, { unique: true })
-db.users.createIndex({ role: 1 })
+db.users.createIndex({ roles: 1 })
 db.users.createIndex({ isActive: 1 })
 ```
 
@@ -37,16 +37,20 @@ db.createCollection("users", {
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["email", "role", "name", "createdAt", "isActive"],
+      required: ["email", "roles", "name", "createdAt", "isActive"],
       properties: {
         email: {
           bsonType: "string",
           pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
           description: "Email válido requerido"
         },
-        role: {
-          enum: ["pending", "student", "teacher", "admin"],
-          description: "Rol debe ser uno de los valores permitidos"
+        roles: {
+          bsonType: "array",
+          items: {
+            enum: ["pending", "student", "teacher", "admin"]
+          },
+          minItems: 1,
+          description: "Roles debe ser un array con al menos un rol válido"
         },
         name: {
           bsonType: "string",
@@ -60,7 +64,7 @@ db.createCollection("users", {
           bsonType: "date"
         },
         lastLogin: {
-          bsonType: "date"
+          bsonType: ["date", "null"]
         },
         isActive: {
           bsonType: "bool"
@@ -388,7 +392,7 @@ db.createCollection("aiPrompts", {
 // Crear índices
 // users
 db.users.createIndex({ email: 1 }, { unique: true });
-db.users.createIndex({ role: 1 });
+db.users.createIndex({ roles: 1 });
 db.users.createIndex({ isActive: 1 });
 
 // projects
@@ -422,7 +426,7 @@ use proyectos;
 // Insertar admin inicial
 db.users.insertOne({
   email: "admin@example.com",
-  role: "admin",
+  roles: ["admin"],
   name: "Administrador",
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -455,15 +459,16 @@ print("Admin email: admin@example.com");
 db.users.findOne({ email: "alumno@example.com" });
 
 // Listar todos los estudiantes activos
-db.users.find({ role: "student", isActive: true });
+db.users.find({ roles: "student", isActive: true });
 
 // Contar usuarios por rol
 db.users.aggregate([
-  { $group: { _id: "$role", count: { $sum: 1 } } }
+  { $unwind: "$roles" },
+  { $group: { _id: "$roles", count: { $sum: 1 } } }
 ]);
 
 // Usuarios pendientes de asignación de rol
-db.users.find({ role: "pending" });
+db.users.find({ roles: "pending" });
 ```
 
 ### Proyectos

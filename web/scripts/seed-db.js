@@ -13,8 +13,8 @@ print("Inserting admin user...");
 
 try {
   db.users.insertOne({
-    email: "admin@example.com",
-    role: "admin",
+    email: "jviejo@gmail.com",
+    roles: ["admin"],
     name: "Administrador",
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -38,8 +38,8 @@ print("Inserting sample teacher...");
 
 try {
   db.users.insertOne({
-    email: "profesor@example.com",
-    role: "teacher",
+    email: "jviejo@gmail.com",
+    roles: ["teacher"],
     name: "Profesor Demo",
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -63,8 +63,8 @@ print("Inserting sample student...");
 
 try {
   db.users.insertOne({
-    email: "alumno@example.com",
-    role: "student",
+    email: "jviejo@gmail.com",
+    roles: ["student"],
     name: "Alumno Demo",
     createdAt: new Date(),
     updatedAt: new Date(),

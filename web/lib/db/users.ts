@@ -51,8 +51,23 @@ export async function createUserWithRoles(
     lastLogin: null
   };
 
-  const result = await collection.insertOne(user as any);
-  return { ...user, _id: result.insertedId };
+  try {
+    const result = await collection.insertOne(user as any);
+    return { ...user, _id: result.insertedId };
+  } catch (error: any) {
+    // Mostrar error detallado de validación
+    console.error('=== ERROR DE VALIDACIÓN MONGODB ===');
+    console.error('Documento que se intentó insertar:');
+    console.error(JSON.stringify(user, null, 2));
+    console.error('\nError completo:');
+    console.error(JSON.stringify(error, null, 2));
+    if (error.errInfo) {
+      console.error('\nDetalles de validación (errInfo):');
+      console.error(JSON.stringify(error.errInfo, null, 2));
+    }
+    console.error('=====================================');
+    throw error;
+  }
 }
 
 /**

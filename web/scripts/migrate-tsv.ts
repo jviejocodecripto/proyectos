@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { MongoClient } from 'mongodb';
+import { MongoClient } from '../web/node_modules/mongodb/lib/index.js';
 import * as path from 'path';
 
 interface TsvRow {
@@ -36,12 +36,7 @@ function parseVideoUrl(url: string): string | null {
 
   // Si contiene "sharingbien" es un error de parseo del TSV
   if (url.includes('sharingbien')) {
-    url = url.split('sharingbien')[0].trim();
-  }
-
-  // Si termina con punto, quitarlo
-  if (url.endsWith('.')) {
-    url = url.slice(0, -1);
+    url = url.split('sharingbien')[0];
   }
 
   // Verificar si es una URL válida de video
@@ -50,10 +45,7 @@ function parseVideoUrl(url: string): string | null {
     /^https?:\/\/(www\.)?vimeo\.com\/.+$/,
     /^https?:\/\/(www\.)?loom\.com\/.+$/,
     /^https?:\/\/(www\.)?drive\.google\.com\/.+$/,
-    /^https?:\/\/(www\.)?dropbox\.com\/.+$/,
-    /^https?:\/\/github\.com\/.+\.(mp4|mov|avi|webm)$/i, // Videos en GitHub
-    /^https?:\/\/github\.com\/.+\/blob\/.+\/media\/.+$/i, // Carpeta media en GitHub
-    /^https?:\/\/github\.com\/.+\/tree\/.+\/video$/i // Carpeta video en GitHub
+    /^https?:\/\/(www\.)?dropbox\.com\/.+$/
   ];
 
   if (videoPatterns.some((pattern) => pattern.test(url))) {
@@ -86,31 +78,19 @@ function parseTsvFile(filePath: string): TsvRow[] {
 
     if (!name || !email) continue;
 
-    // Extraer URL de GitHub del video si está allí, o buscar en otras columnas
-    let githubUrl = extractGithubRepoUrl(videoUrl);
+    // Extraer URL de GitHub si hay video URL
+    const githubUrl = extractGithubRepoUrl(videoUrl);
     const cleanVideoUrl = parseVideoUrl(videoUrl);
 
-    // Si no hay videoUrl válida, intentar buscar GitHub en el nombre (a veces está en la columna equivocada)
-    if (!cleanVideoUrl && !githubUrl) {
-      // Buscar en todas las columnas si hay una URL de GitHub
-      for (const col of columns) {
-        const potentialGithub = extractGithubRepoUrl(col);
-        if (potentialGithub) {
-          githubUrl = potentialGithub;
-          break;
-        }
-      }
-    }
-
-    // Solo añadir si tiene al menos GitHub URL o video URL válida
-    if (githubUrl || cleanVideoUrl) {
+    // Solo añadir si tiene GitHub URL (requisito)
+    if (githubUrl) {
       rows.push({
         name,
         email: email.toLowerCase(),
         course: course || 'No especificado',
         edition: edition || 'No especificado',
         videoUrl: cleanVideoUrl || '',
-        githubUrl: githubUrl || 'https://github.com/codecrypto-academy/pfm-default'
+        githubUrl
       });
     }
   }

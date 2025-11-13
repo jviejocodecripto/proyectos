@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(response, { status: 201 });
   } catch (error) {
+    console.error(error.message);
     // Handle authorization errors
     if (error instanceof Error && error.message === 'Authentication required') {
       const response: ApiResponse = {
