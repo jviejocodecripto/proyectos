@@ -51,12 +51,12 @@ export const updateUserSchema = z.object({
 
 export const createProjectSchema = z.object({
   name: z
-    .string({ required_error: 'Nombre es requerido', invalid_type_error: 'Nombre debe ser texto' })
+    .string()
     .trim()
     .min(3, 'Nombre debe tener al menos 3 caracteres')
     .max(200, 'Nombre debe tener máximo 200 caracteres'),
   repositoryUrl: z
-    .string({ required_error: 'URL del repositorio es requerida', invalid_type_error: 'URL debe ser texto' })
+    .string()
     .trim()
     .url('URL inválida')
     .regex(
@@ -64,7 +64,7 @@ export const createProjectSchema = z.object({
       'Debe ser una URL válida de GitHub (https://github.com/usuario/repositorio)'
     ),
   videoUrl: z
-    .string({ required_error: 'URL del video es requerida', invalid_type_error: 'URL debe ser texto' })
+    .string()
     .trim()
     .url('URL del video inválida')
     .refine(
@@ -81,12 +81,12 @@ export const createProjectSchema = z.object({
       'Debe ser una URL válida de YouTube, Vimeo, Loom o Google Drive'
     ),
   course: z
-    .string({ required_error: 'Curso es requerido', invalid_type_error: 'Curso debe ser texto' })
+    .string()
     .trim()
     .min(2, 'Curso debe tener al menos 2 caracteres')
     .max(100, 'Curso debe tener máximo 100 caracteres'),
   edition: z
-    .string({ required_error: 'Edición es requerida', invalid_type_error: 'Edición debe ser texto' })
+    .string()
     .trim()
     .min(2, 'Edición debe tener al menos 2 caracteres')
     .max(50, 'Edición debe tener máximo 50 caracteres')
@@ -94,7 +94,7 @@ export const createProjectSchema = z.object({
 
 export const createProjectAsTeacherSchema = createProjectSchema.extend({
   studentEmail: z
-    .string({ required_error: 'Email del estudiante es requerido', invalid_type_error: 'Email debe ser texto' })
+    .string()
     .trim()
     .email('Email del estudiante inválido')
 });
