@@ -1,5 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { getCollection } from './mongodb';
+import { uploadMarkdown, downloadMarkdown } from './gridfs';
 import type {
   Project,
   ProjectQueryParams,
@@ -10,6 +11,68 @@ import type {
   RepositoryEvaluation
 } from '@/types';
 import { PAGINATION_DEFAULTS } from '@/types';
+
+// Threshold for storing comments in GridFS (1KB)
+const GRIDFS_THRESHOLD = 1000;
+
+/**
+ * Load markdown content from GridFS for a project's evaluations
+ */
+async function loadEvaluationMarkdown(project: Project): Promise<Project> {
+  if (!project.evaluations) return project;
+
+  const projectWithContent = { ...project };
+
+  // Load video evaluation comments from GridFS if needed
+  if (project.evaluations.videoDemo?.commentsFileId) {
+    try {
+      const comments = await downloadMarkdown(project.evaluations.videoDemo.commentsFileId);
+      projectWithContent.evaluations = {
+        ...projectWithContent.evaluations!,
+        videoDemo: {
+          ...project.evaluations.videoDemo,
+          comments
+        }
+      };
+    } catch (error) {
+      console.error('Error loading video evaluation markdown:', error);
+    }
+  }
+
+  // Load repository evaluation comments from GridFS if needed
+  if (project.evaluations.repository?.commentsFileId) {
+    try {
+      const comments = await downloadMarkdown(project.evaluations.repository.commentsFileId);
+      projectWithContent.evaluations = {
+        ...projectWithContent.evaluations!,
+        repository: {
+          ...project.evaluations.repository,
+          comments
+        }
+      };
+    } catch (error) {
+      console.error('Error loading repository evaluation markdown:', error);
+    }
+  }
+
+  // Load AI analysis from GridFS if needed
+  if (project.evaluations.repository?.aiAnalysisFileId) {
+    try {
+      const aiAnalysis = await downloadMarkdown(project.evaluations.repository.aiAnalysisFileId);
+      projectWithContent.evaluations = {
+        ...projectWithContent.evaluations!,
+        repository: {
+          ...projectWithContent.evaluations!.repository!,
+          aiAnalysis
+        }
+      };
+    } catch (error) {
+      console.error('Error loading AI analysis markdown:', error);
+    }
+  }
+
+  return projectWithContent;
+}
 
 /**
  * Create new project
@@ -48,7 +111,12 @@ export async function findProjectById(id: string): Promise<Project | null> {
     return null;
   }
 
-  return collection.findOne({ _id: new ObjectId(id) });
+  const project = await collection.findOne({ _id: new ObjectId(id) });
+  
+  if (!project) return null;
+
+  // Load markdown content from GridFS
+  return await loadEvaluationMarkdown(project);
 }
 
 /**
@@ -89,8 +157,13 @@ export async function findProjects(
     .limit(limit)
     .toArray();
 
+  // Load markdown content from GridFS for each project
+  const itemsWithMarkdown = await Promise.all(
+    items.map(project => loadEvaluationMarkdown(project))
+  );
+
   return {
-    items,
+    items: itemsWithMarkdown,
     pagination: {
       page,
       limit,
@@ -161,6 +234,21 @@ export async function addVideoEvaluation(
     evaluatedAt: new Date()
   };
 
+  // If comments are large, store in GridFS
+  if (evaluation.comments.length > GRIDFS_THRESHOLD) {
+    const fileId = await uploadMarkdown(
+      evaluation.comments,
+      `video-eval-${projectId}-${Date.now()}.md`,
+      {
+        projectId,
+        evaluationType: 'video',
+        evaluatedBy: evaluation.evaluatedBy
+      }
+    );
+    videoEval.commentsFileId = fileId;
+    videoEval.comments = ''; // Store empty string in document, actual content in GridFS
+  }
+
   const result = await collection.updateOne(
     { _id: new ObjectId(projectId) },
     {
@@ -204,6 +292,36 @@ export async function addRepositoryEvaluation(
     ...evaluation,
     evaluatedAt: new Date()
   };
+
+  // If comments are large, store in GridFS
+  if (evaluation.comments.length > GRIDFS_THRESHOLD) {
+    const fileId = await uploadMarkdown(
+      evaluation.comments,
+      `repo-eval-${projectId}-${Date.now()}.md`,
+      {
+        projectId,
+        evaluationType: 'repository',
+        evaluatedBy: evaluation.evaluatedBy
+      }
+    );
+    repoEval.commentsFileId = fileId;
+    repoEval.comments = ''; // Store empty string in document, actual content in GridFS
+  }
+
+  // If AI analysis is large, store in GridFS
+  if (evaluation.aiAnalysis && evaluation.aiAnalysis.length > GRIDFS_THRESHOLD) {
+    const fileId = await uploadMarkdown(
+      evaluation.aiAnalysis,
+      `ai-analysis-${projectId}-${Date.now()}.md`,
+      {
+        projectId,
+        contentType: 'aiAnalysis',
+        aiPromptUsed: evaluation.aiPromptUsed
+      }
+    );
+    repoEval.aiAnalysisFileId = fileId;
+    repoEval.aiAnalysis = ''; // Store empty string in document, actual content in GridFS
+  }
 
   const result = await collection.updateOne(
     { _id: new ObjectId(projectId) },

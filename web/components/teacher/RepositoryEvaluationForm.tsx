@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import MarkdownEditor from '@/components/common/MarkdownEditor';
 import type { ProjectDTO } from '@/types';
 
 interface RepositoryEvaluationFormProps {
@@ -419,27 +420,31 @@ export default function RepositoryEvaluationForm({
 
         {/* Comments */}
         <div>
-          <label
-            htmlFor="repo-comments"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Comentarios del Profesor *
-          </label>
-          <textarea
-            id="repo-comments"
-            rows={8}
+          <MarkdownEditor
             value={formData.comments}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, comments: e.target.value }))
+            onChange={(value) =>
+              setFormData((prev) => ({ ...prev, comments: value }))
             }
+            label="Comentarios del Profesor *"
+            placeholder="Añade tus comentarios adicionales, retroalimentación específica, sugerencias de mejora...
+
+Puedes usar Markdown para mejor presentación:
+## Puntos Fuertes
+- Excelente documentación
+- Código limpio y bien estructurado
+
+## Áreas de Mejora
+- Añadir más tests unitarios
+- Mejorar el manejo de errores
+
+## Recomendaciones
+1. Revisar la arquitectura
+2. Optimizar consultas
+
+Mínimo 10 caracteres"
             disabled={loading}
-            placeholder="Añade tus comentarios adicionales, retroalimentación específica, sugerencias de mejora..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
-            maxLength={2000}
+            minRows={10}
           />
-          <p className="mt-1 text-xs text-gray-500">
-            {formData.comments.length}/2000 caracteres (mínimo 10)
-          </p>
         </div>
 
         {/* Submit Button */}

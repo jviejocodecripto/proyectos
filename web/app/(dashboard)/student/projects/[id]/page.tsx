@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import MarkdownViewer from '@/components/common/MarkdownViewer';
 import type { ProjectDTO } from '@/types';
 
 export default function ProjectDetailsPage({
@@ -281,10 +282,10 @@ export default function ProjectDetailsPage({
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Comentarios</p>
-                    <p className="text-gray-900 whitespace-pre-wrap">
-                      {project.evaluations.videoDemo.comments}
-                    </p>
+                    <p className="text-sm text-gray-600 mb-2">Comentarios</p>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <MarkdownViewer content={project.evaluations.videoDemo.comments} />
+                    </div>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">
@@ -373,12 +374,12 @@ export default function ProjectDetailsPage({
                     </div>
                   )}
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">
+                    <p className="text-sm text-gray-600 mb-2">
                       Comentarios del Profesor
                     </p>
-                    <p className="text-gray-900 whitespace-pre-wrap">
-                      {project.evaluations.repository.comments}
-                    </p>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <MarkdownViewer content={project.evaluations.repository.comments} />
+                    </div>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">

@@ -38,6 +38,7 @@ export type ProjectStatus = 'pending' | 'submitted' | 'evaluated';
 export interface VideoEvaluation {
   score: number;
   comments: string;
+  commentsFileId?: ObjectId; // GridFS file ID for large markdown content
   evaluatedBy: string;
   evaluatedAt: Date;
 }
@@ -45,8 +46,10 @@ export interface VideoEvaluation {
 export interface RepositoryEvaluation {
   score: number;
   comments: string;
+  commentsFileId?: ObjectId; // GridFS file ID for large markdown content
   aiPromptUsed?: string;
   aiAnalysis?: string;
+  aiAnalysisFileId?: ObjectId; // GridFS file ID for large AI analysis
   codeQuality?: number;
   documentation?: number;
   functionality?: number;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import MarkdownEditor from '@/components/common/MarkdownEditor';
 import type { ProjectDTO } from '@/types';
 
 interface VideoEvaluationFormProps {
@@ -140,29 +141,26 @@ export default function VideoEvaluationForm({
         />
       </div>
 
-      {/* Comments */}
+      {/* Comments with Markdown */}
       <div>
-        <label
-          htmlFor="video-comments"
-          className="block text-sm font-medium text-gray-700 mb-2"
-        >
-          Comentarios *
-        </label>
-        <textarea
-          id="video-comments"
-          rows={6}
+        <MarkdownEditor
           value={formData.comments}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, comments: e.target.value }))
+          onChange={(value) =>
+            setFormData((prev) => ({ ...prev, comments: value }))
           }
+          label="Comentarios de Evaluación *"
+          placeholder="Comenta sobre la presentación, claridad, demostración de funcionalidades...
+
+Puedes usar Markdown para formatear:
+- **Negrita** para destacar
+- *Cursiva* para énfasis
+- Listas numeradas o con viñetas
+- Enlaces y código
+
+Mínimo 10 caracteres"
           disabled={loading}
-          placeholder="Comenta sobre la presentación, claridad, demostración de funcionalidades..."
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
-          maxLength={2000}
+          minRows={8}
         />
-        <p className="mt-1 text-xs text-gray-500">
-          {formData.comments.length}/2000 caracteres (mínimo 10)
-        </p>
       </div>
 
       {/* Submit Button */}
