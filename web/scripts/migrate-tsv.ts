@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { MongoClient } from '../web/node_modules/mongodb/lib/index.js';
+import { MongoClient } from 'mongodb';
 import * as path from 'path';
 
 interface TsvRow {
