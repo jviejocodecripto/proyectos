@@ -63,16 +63,6 @@ export default function ProjectForm({
     return githubPattern.test(url);
   };
 
-  const validateVideoUrl = (url: string): boolean => {
-    const patterns = [
-      /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+$/,
-      /^https?:\/\/(www\.)?vimeo\.com\/.+$/,
-      /^https?:\/\/(www\.)?loom\.com\/.+$/,
-      /^https?:\/\/(www\.)?drive\.google\.com\/.+$/
-    ];
-    return patterns.some(pattern => pattern.test(url));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -91,18 +81,6 @@ export default function ProjectForm({
     if (!validateGitHubUrl(formData.repositoryUrl)) {
       setError(
         'URL de GitHub inválida. Debe ser del formato: https://github.com/usuario/repositorio'
-      );
-      return;
-    }
-
-    if (!formData.videoUrl.trim()) {
-      setError('La URL del video es requerida');
-      return;
-    }
-
-    if (!validateVideoUrl(formData.videoUrl)) {
-      setError(
-        'URL del video inválida. Debe ser de YouTube, Vimeo, Loom o Google Drive'
       );
       return;
     }
@@ -358,7 +336,7 @@ export default function ProjectForm({
           htmlFor="videoUrl"
           className="block text-sm font-medium text-gray-700 mb-2"
         >
-          URL del Video Demo *
+          URL del Video Demo
         </label>
         <input
           id="videoUrl"
@@ -375,13 +353,8 @@ export default function ProjectForm({
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <p className="mt-1 text-xs text-gray-500">
-          Soporta YouTube, Vimeo, Loom o Google Drive
+          Opcional: URL del video demo del proyecto
         </p>
-        {formData.videoUrl && !validateVideoUrl(formData.videoUrl) && (
-          <p className="mt-1 text-xs text-red-600">
-            ⚠️ La URL no parece ser de una plataforma válida
-          </p>
-        )}
       </div>
 
       {/* Course and Edition in a row */}

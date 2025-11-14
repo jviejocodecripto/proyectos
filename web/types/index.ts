@@ -68,7 +68,7 @@ export interface Project {
   name: string;
   studentEmail: string;
   repositoryUrl: string;
-  videoUrl: string;
+  videoUrl?: string;
   course: string;
   edition: string;
   submissionDate: Date;
@@ -85,7 +85,7 @@ export interface ProjectDTO {
   name: string;
   studentEmail: string;
   repositoryUrl: string;
-  videoUrl: string;
+  videoUrl?: string;
   course: string;
   edition: string;
   submissionDate: string;
@@ -116,7 +116,7 @@ export interface ProjectDTO {
 export interface CreateProjectInput {
   name: string;
   repositoryUrl: string;
-  videoUrl: string;
+  videoUrl?: string;
   course: string;
   edition: string;
 }

@@ -497,21 +497,22 @@ export default function TeacherProjectsPage() {
                             />
                           </svg>
                         </a>
-                        <a
-                          href={project.videoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-red-600 hover:text-red-800"
-                          title="Ver video"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                        {project.videoUrl && (
+                          <a
+                            href={project.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-red-600 hover:text-red-800"
+                            title="Ver video"
                           >
-                            <path
-                              strokeLinecap="round"
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
                               d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
@@ -524,6 +525,7 @@ export default function TeacherProjectsPage() {
                             />
                           </svg>
                         </a>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

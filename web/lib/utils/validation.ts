@@ -63,23 +63,16 @@ export const createProjectSchema = z.object({
       /^https:\/\/github\.com\/[\w-]+\/[\w.-]+\/?$/,
       'Debe ser una URL válida de GitHub (https://github.com/usuario/repositorio)'
     ),
-  videoUrl: z
-    .string()
-    .trim()
-    .url('URL del video inválida')
-    .refine(
-      (url) => {
-        // Validar que sea una URL de YouTube, Vimeo, Loom u otras plataformas comunes
-        const patterns = [
-          /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+$/,
-          /^https?:\/\/(www\.)?vimeo\.com\/.+$/,
-          /^https?:\/\/(www\.)?loom\.com\/.+$/,
-          /^https?:\/\/(www\.)?drive\.google\.com\/.+$/
-        ];
-        return patterns.some(pattern => pattern.test(url));
-      },
-      'Debe ser una URL válida de YouTube, Vimeo, Loom o Google Drive'
-    ),
+  videoUrl: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? undefined : trimmed;
+      }
+      return val;
+    },
+    z.string().optional()
+  ),
   course: z
     .string()
     .trim()
@@ -113,22 +106,16 @@ export const updateProjectSchema = z.object({
       'Debe ser una URL válida de GitHub'
     )
     .optional(),
-  videoUrl: z
-    .string()
-    .url('URL del video inválida')
-    .refine(
-      (url) => {
-        const patterns = [
-          /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+$/,
-          /^https?:\/\/(www\.)?vimeo\.com\/.+$/,
-          /^https?:\/\/(www\.)?loom\.com\/.+$/,
-          /^https?:\/\/(www\.)?drive\.google\.com\/.+$/
-        ];
-        return patterns.some(pattern => pattern.test(url));
-      },
-      'Debe ser una URL válida de YouTube, Vimeo, Loom o Google Drive'
-    )
-    .optional(),
+  videoUrl: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? undefined : trimmed;
+      }
+      return val;
+    },
+    z.string().optional()
+  ),
   course: z
     .string()
     .min(2, 'Curso debe tener al menos 2 caracteres')
