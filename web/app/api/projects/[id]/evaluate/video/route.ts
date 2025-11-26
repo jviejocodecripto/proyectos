@@ -2,14 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/session';
 import { findProjectById, addVideoEvaluation } from '@/lib/db/projects';
 import { z } from 'zod';
-import { getFirstError } from '@/lib/utils/validation';
+import { evaluateVideoSchema, getFirstError } from '@/lib/utils/validation';
 import { convertProjectToDTO } from '@/types';
 import type { ApiResponse, ProjectDTO } from '@/types';
-
-const videoEvaluationSchema = z.object({
-  score: z.number().min(0).max(10),
-  comments: z.string().min(10).max(2000)
-});
 
 /**
  * POST /api/projects/:id/evaluate/video
@@ -40,12 +35,11 @@ export async function POST(
 
     // Parse and validate request body
     const body = await req.json();
-    const { score, comments } = videoEvaluationSchema.parse(body);
+    const validatedData = evaluateVideoSchema.parse(body);
 
     // Add video evaluation
     const success = await addVideoEvaluation(id, {
-      score,
-      comments,
+      ...validatedData,
       evaluatedBy: user.email
     });
 

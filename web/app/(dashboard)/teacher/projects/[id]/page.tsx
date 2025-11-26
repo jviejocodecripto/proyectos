@@ -305,7 +305,52 @@ export default function TeacherProjectDetailsPage({
                     {project.evaluations.videoDemo.score}/10
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Evaluation Criteria */}
+                  {(project.evaluations.videoDemo.presentation !== undefined ||
+                    project.evaluations.videoDemo.functionality !== undefined ||
+                    project.evaluations.videoDemo.technicalQuality !== undefined ||
+                    project.evaluations.videoDemo.explanation !== undefined) && (
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        Criterios de Evaluación:
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {project.evaluations.videoDemo.presentation !== undefined && (
+                          <div>
+                            <span className="text-xs text-gray-600">Presentación:</span>
+                            <span className="ml-2 font-semibold text-gray-800">
+                              {project.evaluations.videoDemo.presentation}/10
+                            </span>
+                          </div>
+                        )}
+                        {project.evaluations.videoDemo.functionality !== undefined && (
+                          <div>
+                            <span className="text-xs text-gray-600">Funcionalidades:</span>
+                            <span className="ml-2 font-semibold text-gray-800">
+                              {project.evaluations.videoDemo.functionality}/10
+                            </span>
+                          </div>
+                        )}
+                        {project.evaluations.videoDemo.technicalQuality !== undefined && (
+                          <div>
+                            <span className="text-xs text-gray-600">Calidad Técnica:</span>
+                            <span className="ml-2 font-semibold text-gray-800">
+                              {project.evaluations.videoDemo.technicalQuality}/10
+                            </span>
+                          </div>
+                        )}
+                        {project.evaluations.videoDemo.explanation !== undefined && (
+                          <div>
+                            <span className="text-xs text-gray-600">Explicación:</span>
+                            <span className="ml-2 font-semibold text-gray-800">
+                              {project.evaluations.videoDemo.explanation}/10
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm text-gray-600 mb-2">Comentarios</p>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">

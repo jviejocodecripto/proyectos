@@ -36,7 +36,11 @@ export interface UserDTO {
 export type ProjectStatus = 'pending' | 'submitted' | 'evaluated';
 
 export interface VideoEvaluation {
-  score: number;
+  score: number; // Nota final (0-10)
+  presentation: number; // Calidad de Presentación (0-10)
+  functionality: number; // Demostración de Funcionalidades (0-10)
+  technicalQuality: number; // Calidad Técnica del Video (Audio/Video) (0-10)
+  explanation: number; // Claridad de Explicación (0-10)
   comments: string;
   commentsFileId?: ObjectId; // GridFS file ID for large markdown content
   evaluatedBy: string;
@@ -94,6 +98,10 @@ export interface ProjectDTO {
   evaluations?: {
     videoDemo?: {
       score: number;
+      presentation: number;
+      functionality: number;
+      technicalQuality: number;
+      explanation: number;
       comments: string;
       evaluatedBy: string;
       evaluatedAt: string;
@@ -187,7 +195,11 @@ export interface UpdatePromptInput {
 // ============================================================================
 
 export interface EvaluateVideoInput {
-  score: number;
+  score: number; // Nota final (0-10)
+  presentation: number; // Calidad de Presentación (0-10)
+  functionality: number; // Demostración de Funcionalidades (0-10)
+  technicalQuality: number; // Calidad Técnica del Video (0-10)
+  explanation: number; // Claridad de Explicación (0-10)
   comments: string;
 }
 
@@ -411,6 +423,10 @@ export function convertProjectToDTO(project: Project): ProjectDTO {
           videoDemo: project.evaluations.videoDemo
             ? {
                 score: project.evaluations.videoDemo.score,
+                presentation: project.evaluations.videoDemo.presentation,
+                functionality: project.evaluations.videoDemo.functionality,
+                technicalQuality: project.evaluations.videoDemo.technicalQuality,
+                explanation: project.evaluations.videoDemo.explanation,
                 comments: project.evaluations.videoDemo.comments,
                 evaluatedBy: project.evaluations.videoDemo.evaluatedBy,
                 evaluatedAt: dateToISOString(

@@ -135,8 +135,24 @@ export const updateProjectSchema = z.object({
 export const evaluateVideoSchema = z.object({
   score: z
     .number()
-    .min(0, 'La nota mínima es 0')
-    .max(10, 'La nota máxima es 10'),
+    .min(0, 'La nota final mínima es 0')
+    .max(10, 'La nota final máxima es 10'),
+  presentation: z
+    .number()
+    .min(0, 'La nota de presentación mínima es 0')
+    .max(10, 'La nota de presentación máxima es 10'),
+  functionality: z
+    .number()
+    .min(0, 'La nota de funcionalidades mínima es 0')
+    .max(10, 'La nota de funcionalidades máxima es 10'),
+  technicalQuality: z
+    .number()
+    .min(0, 'La nota de calidad técnica mínima es 0')
+    .max(10, 'La nota de calidad técnica máxima es 10'),
+  explanation: z
+    .number()
+    .min(0, 'La nota de explicación mínima es 0')
+    .max(10, 'La nota de explicación máxima es 10'),
   comments: z
     .string()
     .min(10, 'Los comentarios deben tener al menos 10 caracteres')
