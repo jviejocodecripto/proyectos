@@ -59,7 +59,13 @@ export default function ProjectForm({
   };
 
   const validateGitHubUrl = (url: string): boolean => {
-    const githubPattern = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+\/?$/;
+    // Permite URLs de GitHub con o sin subdirectorios
+    // Ejemplos válidos:
+    // - https://github.com/usuario/repositorio
+    // - https://github.com/usuario/repositorio/
+    // - https://github.com/usuario/repositorio/tree/main/subdir
+    // - https://github.com/usuario/repositorio/blob/main/subdir/archivo
+    const githubPattern = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/.*)?$/;
     return githubPattern.test(url);
   };
 
@@ -80,7 +86,7 @@ export default function ProjectForm({
 
     if (!validateGitHubUrl(formData.repositoryUrl)) {
       setError(
-        'URL de GitHub inválida. Debe ser del formato: https://github.com/usuario/repositorio'
+        'URL de GitHub inválida. Debe ser del formato: https://github.com/usuario/repositorio (con subdirectorio opcional)'
       );
       return;
     }
@@ -116,7 +122,14 @@ export default function ProjectForm({
       const method = mode === 'create' ? 'POST' : 'PATCH';
 
       // Prepare data to send
-      const dataToSend: any = {
+      const dataToSend: {
+        name: string;
+        repositoryUrl: string;
+        videoUrl: string;
+        course: string;
+        edition: string;
+        studentEmail?: string;
+      } = {
         name: formData.name,
         repositoryUrl: formData.repositoryUrl,
         videoUrl: formData.videoUrl,
@@ -315,12 +328,12 @@ export default function ProjectForm({
               repositoryUrl: e.target.value
             }))
           }
-          placeholder="https://github.com/usuario/repositorio"
+          placeholder="https://github.com/usuario/repositorio o https://github.com/usuario/repositorio/tree/main/subdir"
           disabled={loading}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <p className="mt-1 text-xs text-gray-500">
-          Ejemplo: https://github.com/usuario/mi-proyecto
+          Ejemplo: https://github.com/usuario/mi-proyecto o https://github.com/usuario/repositorio/tree/main/subdir
         </p>
         {formData.repositoryUrl &&
           !validateGitHubUrl(formData.repositoryUrl) && (
@@ -408,7 +421,7 @@ export default function ProjectForm({
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start">
           <svg
-            className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5"
+                  className="w-5 h-5 text-blue-600 mr-3 shrink-0 mt-0.5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

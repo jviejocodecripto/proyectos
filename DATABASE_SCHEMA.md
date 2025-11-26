@@ -140,8 +140,8 @@ db.createCollection("projects", {
         },
         repositoryUrl: {
           bsonType: "string",
-          pattern: "^https://github\\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$",
-          description: "URL de GitHub válida"
+          pattern: "^https://github\\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+(/.*)?$",
+          description: "URL de GitHub válida (permite subdirectorios opcionales)"
         },
         submissionDate: {
           bsonType: "date"

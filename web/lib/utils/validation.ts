@@ -60,8 +60,8 @@ export const createProjectSchema = z.object({
     .trim()
     .url('URL inválida')
     .regex(
-      /^https:\/\/github\.com\/[\w-]+\/[\w.-]+\/?$/,
-      'Debe ser una URL válida de GitHub (https://github.com/usuario/repositorio)'
+      /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/.*)?$/,
+      'Debe ser una URL válida de GitHub (https://github.com/usuario/repositorio con subdirectorio opcional)'
     ),
   videoUrl: z.preprocess(
     (val) => {
@@ -102,8 +102,8 @@ export const updateProjectSchema = z.object({
     .string()
     .url('URL inválida')
     .regex(
-      /^https:\/\/github\.com\/[\w-]+\/[\w.-]+$/,
-      'Debe ser una URL válida de GitHub'
+      /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/.*)?$/,
+      'Debe ser una URL válida de GitHub (con subdirectorio opcional)'
     )
     .optional(),
   videoUrl: z.preprocess(
