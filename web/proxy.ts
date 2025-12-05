@@ -18,7 +18,7 @@ const roleRoutes: Record<string, string[]> = {
   '/api/auth/logout': ['student', 'teacher', 'admin', 'pending']
 };
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Allow public routes
@@ -113,7 +113,7 @@ export async function middleware(req: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('Middleware error:', error);
+    console.error('Proxy error:', error);
 
     // Redirect to login on error for page routes
     if (!pathname.startsWith('/api')) {
@@ -132,7 +132,7 @@ export async function middleware(req: NextRequest) {
   }
 }
 
-// Configure which routes to run middleware on
+// Configure which routes to run proxy on
 export const config = {
   matcher: [
     /*
@@ -145,3 +145,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\..*|public/).*)'
   ]
 };
+
