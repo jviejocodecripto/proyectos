@@ -14,18 +14,40 @@ export async function POST(req: NextRequest) {
 
     const collection = await getCollection('users');
 
-    // Find all users with 'role' field (legacy format)
+    // Find only users that need migration:
+    // - Have 'role' field (legacy format)
+    // - Don't have 'roles' field OR 'roles' is empty/null
     const legacyUsers = await collection
-      .find({ role: { $exists: true } })
+      .find({
+        role: { $exists: true },
+        $or: [
+          { roles: { $exists: false } },
+          { roles: null },
+          { roles: [] }
+        ]
+      })
       .toArray();
 
     let migratedCount = 0;
+    let skippedCount = 0;
     let errorCount = 0;
 
     for (const user of legacyUsers) {
       try {
+        // Double-check: skip if user already has roles
+        // @ts-ignore - accessing legacy field
+        if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
+          skippedCount++;
+          continue;
+        }
+
         // @ts-ignore - accessing legacy field
         const legacyRole = user.role;
+
+        if (!legacyRole) {
+          skippedCount++;
+          continue;
+        }
 
         // Update to new format
         await collection.updateOne(
@@ -48,10 +70,11 @@ export async function POST(req: NextRequest) {
 
     const response: ApiResponse = {
       success: true,
-      message: `Migración completada. ${migratedCount} usuarios migrados, ${errorCount} errores.`,
+      message: `Migración completada. ${migratedCount} usuarios migrados, ${skippedCount} omitidos (ya migrados), ${errorCount} errores.`,
       data: {
         total: legacyUsers.length,
         migrated: migratedCount,
+        skipped: skippedCount,
         errors: errorCount
       }
     };

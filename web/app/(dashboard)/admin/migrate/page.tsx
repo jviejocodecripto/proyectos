@@ -137,6 +137,9 @@ export default function MigratePage() {
                   <div className="text-sm text-green-700 space-y-1">
                     <p>• Total de usuarios encontrados: {result.data.total}</p>
                     <p>• Usuarios migrados: {result.data.migrated}</p>
+                    {result.data.skipped > 0 && (
+                      <p className="text-blue-600">• Omitidos (ya migrados): {result.data.skipped}</p>
+                    )}
                     {result.data.errors > 0 && (
                       <p className="text-red-600">• Errores: {result.data.errors}</p>
                     )}
