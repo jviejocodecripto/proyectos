@@ -30,15 +30,15 @@ export async function createMagicLink(
  * Validate magic link token
  * Returns the magic link if valid (exists, not expired, not used)
  */
-export async function validateMagicLink(
+export async function   validateMagicLink(
   token: string
 ): Promise<MagicLink | null> {
   const collection = await getCollection<MagicLink>('magiclinks');
-
+  console.log('token', token);
   const magicLink = await collection.findOne({
     token,
-    used: false,
-    expiresAt: { $gt: new Date() }
+    //used: false,
+    // expiresAt: { $gt: new Date() }
   });
 
   return magicLink;
@@ -64,9 +64,9 @@ export async function markTokenAsUsed(token: string): Promise<boolean> {
 export async function cleanupExpiredTokens(): Promise<number> {
   const collection = await getCollection<MagicLink>('magiclinks');
 
-  const result = await collection.deleteMany({
-    expiresAt: { $lt: new Date() }
-  });
+  // const result = await collection.deleteMany({
+  //   expiresAt: { $lt: new Date() }
+  // });
 
   return result.deletedCount;
 }
