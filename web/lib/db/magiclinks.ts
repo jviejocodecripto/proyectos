@@ -68,7 +68,8 @@ export async function cleanupExpiredTokens(): Promise<number> {
   //   expiresAt: { $lt: new Date() }
   // });
 
-  return result.deletedCount;
+  // return result.deletedCount;
+  return 0;
 }
 
 /**
