@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import RoleSwitcher from '@/components/layout/RoleSwitcher';
@@ -16,13 +16,16 @@ export default function AdminLayout({
   const [user, setUser] = useState<UserDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const fetchingRef = useRef(false);
 
-  useEffect(() => {
-    fetchUser();
-  }, []);
+  const fetchUser = useCallback(async () => {
+    // Prevent duplicate calls
+    if (fetchingRef.current) {
+      return;
+    }
 
-  const fetchUser = async () => {
     try {
+      fetchingRef.current = true;
       const response = await fetch('/api/auth/me');
       const data = await response.json();
 
@@ -36,8 +39,13 @@ export default function AdminLayout({
       router.push('/login');
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
 
   const handleLogout = async () => {
     try {

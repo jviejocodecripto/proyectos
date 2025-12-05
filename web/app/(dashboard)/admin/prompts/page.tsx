@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import PromptEditor from '@/components/admin/PromptEditor';
 import PromptList from '@/components/admin/PromptList';
@@ -50,13 +50,16 @@ export default function AdminPromptsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editingPrompt, setEditingPrompt] = useState<AIPromptDTO | null>(null);
   const [showEditor, setShowEditor] = useState(false);
+  const fetchingRef = useRef(false);
 
-  useEffect(() => {
-    fetchPrompts();
-  }, []);
+  const fetchPrompts = useCallback(async () => {
+    // Prevent duplicate calls
+    if (fetchingRef.current) {
+      return;
+    }
 
-  const fetchPrompts = async () => {
     try {
+      fetchingRef.current = true;
       setLoading(true);
       setError(null);
 
@@ -82,8 +85,13 @@ export default function AdminPromptsPage() {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    fetchPrompts();
+  }, [fetchPrompts]);
 
   const handleCreatePrompt = async (formData: {
     name: string;

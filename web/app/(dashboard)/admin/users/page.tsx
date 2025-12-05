@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import UserTable from '@/components/admin/UserTable';
 import UserFilters from '@/components/admin/UserFilters';
@@ -31,9 +31,16 @@ export default function AdminUsersPage() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserDTO | null>(null);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
+  const fetchingRef = useRef(false);
 
   const fetchUsers = useCallback(async () => {
+    // Prevent duplicate calls
+    if (fetchingRef.current) {
+      return;
+    }
+
     try {
+      fetchingRef.current = true;
       setLoading(true);
       setError(null);
 
@@ -69,6 +76,7 @@ export default function AdminUsersPage() {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   }, [pagination.page, pagination.limit, filters, router]);
 
