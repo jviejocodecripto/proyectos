@@ -5,19 +5,27 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { ProjectDTO } from '@/types';
 
+interface StudentInfo {
+  email: string;
+  name: string;
+}
+
 export default function TeacherProjectsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
+  const [students, setStudents] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'submitted' | 'evaluated'>('all');
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [editionFilter, setEditionFilter] = useState<string>('all');
+  const [monthFilter, setMonthFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     fetchProjects();
+    fetchStudents();
   }, []);
 
   const fetchProjects = async () => {
@@ -52,6 +60,25 @@ export default function TeacherProjectsPage() {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      const response = await fetch('/api/students');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const studentsMap: Record<string, string> = {};
+          data.data.forEach((student: StudentInfo) => {
+            studentsMap[student.email] = student.name;
+          });
+          setStudents(studentsMap);
+        }
+      }
+    } catch (err) {
+      // Silently fail - students info is optional
+      console.error('Error fetching students:', err);
     }
   };
 
@@ -102,6 +129,17 @@ export default function TeacherProjectsPage() {
     return Array.from(editions).sort();
   }, [projects]);
 
+  // Get unique months from submission dates
+  const uniqueMonths = useMemo(() => {
+    const months = new Set(
+      projects.map(p => {
+        const date = new Date(p.submissionDate);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      })
+    );
+    return Array.from(months).sort().reverse();
+  }, [projects]);
+
   // Filter projects
   const filteredProjects = useMemo(() => {
     return projects.filter(project => {
@@ -120,17 +158,28 @@ export default function TeacherProjectsPage() {
         return false;
       }
 
+      // Month filter
+      if (monthFilter !== 'all') {
+        const projectDate = new Date(project.submissionDate);
+        const projectMonth = `${projectDate.getFullYear()}-${String(projectDate.getMonth() + 1).padStart(2, '0')}`;
+        if (projectMonth !== monthFilter) {
+          return false;
+        }
+      }
+
       // Search filter (by email or name)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesEmail = project.studentEmail.toLowerCase().includes(query);
         const matchesName = project.name.toLowerCase().includes(query);
-        return matchesEmail || matchesName;
+        const studentName = students[project.studentEmail]?.toLowerCase() || '';
+        const matchesStudentName = studentName.includes(query);
+        return matchesEmail || matchesName || matchesStudentName;
       }
 
       return true;
     });
-  }, [projects, statusFilter, courseFilter, editionFilter, searchQuery]);
+  }, [projects, statusFilter, courseFilter, editionFilter, monthFilter, searchQuery, students]);
 
   const submittedCount = projects.filter((p) => p.status === 'submitted').length;
   const evaluatedCount = projects.filter((p) => p.status === 'evaluated').length;
@@ -270,7 +319,7 @@ export default function TeacherProjectsPage() {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {/* Search */}
           <div className="lg:col-span-2">
             <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
@@ -319,6 +368,31 @@ export default function TeacherProjectsPage() {
               {uniqueEditions.map(edition => (
                 <option key={edition} value={edition}>{edition}</option>
               ))}
+            </select>
+          </div>
+
+          {/* Month Filter */}
+          <div>
+            <label htmlFor="month" className="block text-sm font-medium text-gray-700 mb-1">
+              Mes de Entrega
+            </label>
+            <select
+              id="month"
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">Todos los meses</option>
+              {uniqueMonths.map(month => {
+                const [year, monthNum] = month.split('-');
+                const date = new Date(parseInt(year), parseInt(monthNum) - 1);
+                const monthName = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                return (
+                  <option key={month} value={month}>
+                    {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -447,6 +521,11 @@ export default function TeacherProjectsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{project.studentEmail}</div>
+                      {students[project.studentEmail] && (
+                        <div className="text-sm text-gray-500 mt-1">
+                          {students[project.studentEmail]}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{project.course}</div>
