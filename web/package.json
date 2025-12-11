@@ -10,7 +10,8 @@
     "db:setup": "mongosh < ../scripts/setup-db.js",
     "db:seed": "mongosh < ../scripts/seed-db.js",
     "db:init": "npm run db:setup && npm run db:seed",
-    "test:email": "tsx scripts/test-email.ts"
+    "test:email": "tsx scripts/test-email.ts",
+    "download:projects": "tsx scripts/download-projects.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

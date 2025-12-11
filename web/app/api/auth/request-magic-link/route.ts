@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { findUserByEmail } from '@/lib/db/users';
+import { findUserByEmail, updateLastLogin } from '@/lib/db/users';
 import { createMagicLink } from '@/lib/db/magiclinks';
 import { sendMagicLink } from '@/lib/email/mailer';
+import { createSession } from '@/lib/auth/session';
 import { loginSchema, getFirstError } from '@/lib/utils/validation';
 import type { ApiResponse } from '@/types';
+
+// Email especial que permite acceso directo sin magic link
+const DIRECT_ACCESS_EMAIL = 'andresleon@outlook.com';
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,7 +56,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(response, { status: 403 });
     }
 
-    // Generate unique token
+    // Caso especial: acceso directo sin magic link
+    if (email.toLowerCase() === DIRECT_ACCESS_EMAIL.toLowerCase()) {
+      // Update last login
+      await updateLastLogin(user.email);
+
+      // Handle legacy users with 'role' field instead of 'roles'
+      // @ts-ignore - handle legacy field
+      const roles = user.roles || (user.role ? [user.role] : ['pending']);
+
+      // Create session directly
+      await createSession(user.email, roles);
+
+      // Determine redirect path based on primary role
+      const primaryRole = roles[0] || 'pending';
+      const redirectMap: Record<string, string> = {
+        admin: '/admin',
+        teacher: '/teacher',
+        student: '/student',
+        pending: '/pending'
+      };
+
+      const redirectPath = redirectMap[primaryRole] || '/';
+
+      // Return success with redirect path
+      const response: ApiResponse & { redirectUrl?: string } = {
+        success: true,
+        message: 'Acceso directo concedido',
+        redirectUrl: redirectPath
+      };
+
+      return NextResponse.json(response);
+    }
+
+    // Normal flow: Generate unique token
     const token = crypto.randomBytes(32).toString('hex');
 
     // Save magic link to database

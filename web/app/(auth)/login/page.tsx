@@ -53,6 +53,14 @@ function LoginForm() {
       const data = await response.json();
 
       if (data.success) {
+        // Si hay redirectUrl, significa acceso directo (caso especial)
+        if (data.redirectUrl) {
+          // Redirigir directamente sin mostrar mensaje
+          router.push(data.redirectUrl);
+          return;
+        }
+
+        // Flujo normal: mostrar mensaje de éxito
         setMessage({
           type: 'success',
           text:
