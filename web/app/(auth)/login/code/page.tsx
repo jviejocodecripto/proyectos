@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 
-function LoginForm() {
+function CodeForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [code, setCode] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{
@@ -13,47 +13,16 @@ function LoginForm() {
     text: string;
   } | null>(null);
 
-  // Check for token parameter and redirect to code form
-  // Only redirect if token is NOT a magic link (magic links are 64 hex chars)
-  // Magic links should go through /api/auth/verify, not the code form
-  useEffect(() => {
-    const token = searchParams?.get('token');
-    
-    // If token parameter exists and is NOT a magic link, redirect to code form
-    // Magic links are 32 bytes = 64 hex characters
-    if (token !== null) {
-      const isMagicLinkToken = /^[a-f0-9]{64}$/i.test(token);
-      if (!isMagicLinkToken) {
-        router.replace('/login/code');
-        return;
-      }
-    }
-  }, [searchParams, router]);
-
-  // Check for errors from URL params
-  useEffect(() => {
-    const error = searchParams?.get('error');
-    if (error) {
-      const errorMessages: Record<string, string> = {
-        'token-missing': 'Token no proporcionado',
-        'invalid-token': 'Token inválido o expirado. Solicita uno nuevo.',
-        'user-not-found': 'Usuario no encontrado',
-        'user-inactive': 'Tu cuenta está desactivada',
-        'server-error': 'Error del servidor. Intenta nuevamente.'
-      };
-
-      setMessage({
-        type: 'error',
-        text: errorMessages[error] || 'Error desconocido'
-      });
-    }
-  }, [searchParams]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email) {
-      setMessage({ type: 'error', text: 'Ingresa tu email' });
+    if (!code || !email) {
+      setMessage({ type: 'error', text: 'Ingresa el código y tu email' });
+      return;
+    }
+
+    if (code.length !== 6 || !/^\d+$/.test(code)) {
+      setMessage({ type: 'error', text: 'El código debe tener 6 dígitos numéricos' });
       return;
     }
 
@@ -61,34 +30,30 @@ function LoginForm() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/auth/request-magic-link', {
+      const response = await fetch('/api/tokens/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ code, email: email.toLowerCase() })
       });
 
       const data = await response.json();
 
-      if (data.success) {
-        // Si hay redirectUrl, significa acceso directo (caso especial)
-        if (data.redirectUrl) {
-          // Redirigir directamente sin mostrar mensaje
-          router.push(data.redirectUrl);
-          return;
-        }
-
-        // Flujo normal: mostrar mensaje de éxito
+      if (response.ok) {
+        // Success - data contains token, email, serverUrl, createdAt, and env vars
         setMessage({
           type: 'success',
-          text:
-            data.message ||
-            'Hemos enviado un enlace de acceso a tu email. Revisa tu bandeja de entrada.'
+          text: 'Código validado correctamente. Revisa la consola para ver el JSON completo.'
         });
-        setEmail('');
+        
+        // Log the complete response to console
+        console.log('Token y variables de entorno:', JSON.stringify(data, null, 2));
+        
+        // Optionally, you could copy to clipboard or show in a modal
+        // For now, we'll just show success and log to console
       } else {
         setMessage({
           type: 'error',
-          text: data.error || 'Error al enviar el enlace'
+          text: data.error || 'Error al validar el código'
         });
       }
     } catch (error) {
@@ -123,10 +88,10 @@ function LoginForm() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Sistema de Proyectos
+            Validar Código
           </h1>
           <p className="text-gray-600 mt-2">
-            Ingresa tu email para recibir un enlace de acceso
+            Ingresa el código de 6 dígitos y tu email
           </p>
         </div>
 
@@ -150,7 +115,32 @@ function LoginForm() {
                 disabled={loading}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
                 autoComplete="email"
-                autoFocus
+                required
+              />
+            </div>
+
+            {/* Code Input */}
+            <div className="mb-6">
+              <label
+                htmlFor="code"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Código de 6 dígitos
+              </label>
+              <input
+                id="code"
+                type="text"
+                value={code}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setCode(value);
+                }}
+                placeholder="123456"
+                disabled={loading}
+                maxLength={6}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed text-center text-2xl tracking-widest font-mono"
+                autoComplete="off"
+                required
               />
             </div>
 
@@ -213,7 +203,7 @@ function LoginForm() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || !email}
+              disabled={loading || !code || !email || code.length !== 6}
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
@@ -237,10 +227,10 @@ function LoginForm() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  Enviando...
+                  Validando...
                 </span>
               ) : (
-                'Enviar enlace de acceso'
+                'Validar Código'
               )}
             </button>
           </form>
@@ -263,54 +253,30 @@ function LoginForm() {
               </svg>
               <div>
                 <p className="font-medium text-gray-900">
-                  Autenticación sin contraseña
+                  Validación de código
                 </p>
                 <p className="mt-1">
-                  Te enviaremos un enlace seguro a tu email que te permitirá
-                  acceder directamente. El enlace expira en 15 minutos.
+                  Ingresa el código de 6 dígitos que recibiste y tu email. 
+                  Al validar correctamente, recibirás un token JWT y las variables de entorno globales.
                 </p>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Demo users info (only in development) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm font-medium text-yellow-900 mb-2">
-              Usuarios de prueba:
-            </p>
-            <ul className="text-sm text-yellow-800 space-y-1">
-              <li>• admin@example.com (Admin)</li>
-              <li>• profesor@example.com (Teacher)</li>
-              <li>• alumno@example.com (Student)</li>
-            </ul>
-            <p className="text-xs text-yellow-700 mt-2">
-              Revisa MailHog en{' '}
-              <a
-                href="http://localhost:8025"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                http://localhost:8025
-              </a>
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
-export default function LoginPage() {
+export default function CodePage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     }>
-      <LoginForm />
+      <CodeForm />
     </Suspense>
   );
 }
+

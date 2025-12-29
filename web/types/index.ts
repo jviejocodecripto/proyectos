@@ -109,6 +109,7 @@ export interface ProjectDTO {
     repository?: {
       score: number;
       comments: string;
+      aiPromptUsed?: string;
       aiAnalysis?: string;
       codeQuality?: number;
       documentation?: number;
@@ -127,6 +128,7 @@ export interface CreateProjectInput {
   videoUrl?: string;
   course: string;
   edition: string;
+  submissionDate: Date;
 }
 
 export interface UpdateProjectInput {
@@ -135,6 +137,7 @@ export interface UpdateProjectInput {
   videoUrl?: string;
   course?: string;
   edition?: string;
+  submissionDate?: Date;
 }
 
 // ============================================================================
@@ -148,9 +151,262 @@ export interface MagicLink {
   createdAt: Date;
   expiresAt: Date;
   used: boolean;
+  redirect?: string; // URL de redirección después del login
 }
 
 export type MagicLinkWithoutId = Omit<MagicLink, '_id'>;
+
+// ============================================================================
+// TOKEN TYPES (6-digit code for JWT generation)
+// ============================================================================
+
+export interface Token {
+  _id?: ObjectId;
+  code: string; // 6-digit random code
+  email?: string; // Email del usuario (se asigna al validar)
+  expiresAt?: Date; // Fecha de expiración del JWT (12 meses)
+  jwt?: string; // JWT token generado
+  createdAt: Date;
+  used: boolean; // Si el código ya fue usado
+}
+
+export type TokenWithoutId = Omit<Token, '_id'>;
+
+export interface TokenDTO {
+  _id: string;
+  code: string;
+  email?: string;
+  expiresAt?: string;
+  jwt?: string;
+  createdAt: string;
+  used: boolean;
+}
+
+// ============================================================================
+// ENV CONFIG TYPES
+// ============================================================================
+
+export type Environment = 'dev' | 'pro' | 'all';
+
+export interface EnvConfig {
+  _id?: ObjectId;
+  projectId: string | 'global'; // 'global' para configuraciones globales (estudiante o admin), ObjectId string para proyectos específicos
+  studentEmail?: string; // Email del estudiante (solo para globales de estudiante, undefined para globales de admin)
+  environment: Environment; // 'dev' o 'pro' o 'all'
+  scope: 'client' | 'server'; // 'client' para NEXT_PUBLIC_ (cliente), 'server' para servidor
+  key: string; // Nombre de la variable de entorno
+  value: string; // Valor de la variable
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type EnvConfigWithoutId = Omit<EnvConfig, '_id'>;
+
+export interface EnvConfigDTO {
+  _id: string;
+  projectId: string | 'global';
+  studentEmail?: string | null; // Email del estudiante (solo para globales de estudiante), null para admin globals
+  environment: Environment;
+  scope: 'client' | 'server';
+  key: string;
+  value: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEnvConfigInput {
+  projectId: string | 'global';
+  environment: Environment;
+  scope: 'client' | 'server';
+  key: string;
+  value: string;
+}
+
+export interface UpdateEnvConfigInput {
+  environment?: 'dev' | 'pro' | 'all';
+  scope?: 'client' | 'server';
+  key?: string;
+  value?: string;
+}
+
+// ============================================================================
+// SESSION TYPES
+// ============================================================================
+
+export interface SessionData {
+  email: string;
+  roles: UserRole[];
+  isLoggedIn: boolean;
+}
+
+// ============================================================================
+// API RESPONSE TYPES
+// ============================================================================
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  code?: string;
+  message?: string;
+  globals?: {
+    studentGlobalsDev?: EnvConfigDTO[];
+    studentGlobalsPro?: EnvConfigDTO[];
+    studentGlobalsAll?: EnvConfigDTO[];
+    adminGlobals?: EnvConfigDTO[];
+  };
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export const PAGINATION_DEFAULTS = {
+  PAGE: 1,
+  LIMIT: 20
+} as const;
+
+export const MAGIC_LINK_EXPIRY_MINUTES = 15;
+
+export interface UserQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: UserRole;
+  roles?: UserRole[];
+  isActive?: boolean;
+}
+
+export interface ProjectQueryParams {
+  page?: number;
+  limit?: number;
+  studentEmail?: string;
+  status?: ProjectStatus;
+}
+
+// ============================================================================
+// UTILITY TYPES
+// ============================================================================
+
+export function dateToISOString(date: Date): string {
+  return date.toISOString();
+}
+
+export function formatDateTime(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleString('es-ES', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+export function convertUserToDTO(user: User): UserDTO {
+  return {
+    email: user.email,
+    roles: user.roles,
+    name: user.name,
+    createdAt: dateToISOString(user.createdAt),
+    updatedAt: dateToISOString(user.updatedAt),
+    lastLogin: user.lastLogin ? dateToISOString(user.lastLogin) : null,
+    isActive: user.isActive
+  };
+}
+
+export function convertPromptToDTO(prompt: AIPrompt): AIPromptDTO {
+  return {
+    _id: prompt._id!.toString(),
+    name: prompt.name,
+    prompt: prompt.prompt,
+    isActive: prompt.isActive,
+    createdBy: prompt.createdBy,
+    createdAt: dateToISOString(prompt.createdAt),
+    updatedAt: dateToISOString(prompt.updatedAt)
+  };
+}
+
+export function convertTokenToDTO(token: Token): TokenDTO {
+  return {
+    _id: token._id!.toString(),
+    code: token.code,
+    email: token.email,
+    expiresAt: token.expiresAt ? dateToISOString(token.expiresAt) : undefined,
+    jwt: token.jwt,
+    createdAt: dateToISOString(token.createdAt),
+    used: token.used
+  };
+}
+
+export function convertEnvConfigToDTO(envConfig: EnvConfig): EnvConfigDTO {
+  return {
+    _id: envConfig._id!.toString(),
+    projectId: envConfig.projectId,
+    studentEmail: envConfig.studentEmail,
+    environment: envConfig.environment,
+    scope: envConfig.scope,
+    key: envConfig.key,
+    value: envConfig.value,
+    createdAt: dateToISOString(envConfig.createdAt),
+    updatedAt: dateToISOString(envConfig.updatedAt)
+  };
+}
+
+export function convertProjectToDTO(project: Project): ProjectDTO {
+  return {
+    _id: project._id!.toString(),
+    name: project.name,
+    studentEmail: project.studentEmail,
+    repositoryUrl: project.repositoryUrl,
+    videoUrl: project.videoUrl,
+    course: project.course,
+    edition: project.edition,
+    submissionDate: project.submissionDate.toISOString(),
+    createdAt: project.createdAt.toISOString(),
+    updatedAt: project.updatedAt.toISOString(),
+    status: project.status,
+    evaluations: project.evaluations
+      ? {
+          videoDemo: project.evaluations.videoDemo
+            ? {
+                score: project.evaluations.videoDemo.score,
+                presentation: project.evaluations.videoDemo.presentation,
+                functionality: project.evaluations.videoDemo.functionality,
+                technicalQuality:
+                  project.evaluations.videoDemo.technicalQuality,
+                explanation: project.evaluations.videoDemo.explanation,
+                comments: project.evaluations.videoDemo.comments,
+                evaluatedBy: project.evaluations.videoDemo.evaluatedBy,
+                evaluatedAt:
+                  project.evaluations.videoDemo.evaluatedAt.toISOString()
+              }
+            : undefined,
+          repository: project.evaluations.repository
+            ? {
+                score: project.evaluations.repository.score,
+                comments: project.evaluations.repository.comments,
+                aiPromptUsed: project.evaluations.repository.aiPromptUsed,
+                aiAnalysis: project.evaluations.repository.aiAnalysis,
+                codeQuality: project.evaluations.repository.codeQuality,
+                documentation: project.evaluations.repository.documentation,
+                functionality: project.evaluations.repository.functionality,
+                gitUsage: project.evaluations.repository.gitUsage,
+                evaluatedBy: project.evaluations.repository.evaluatedBy,
+                evaluatedAt:
+                  project.evaluations.repository.evaluatedAt.toISOString()
+              }
+            : undefined
+        }
+      : undefined
+  };
+}
 
 // ============================================================================
 // AI PROMPT TYPES
@@ -165,8 +421,6 @@ export interface AIPrompt {
   createdAt: Date;
   updatedAt: Date;
 }
-
-export type AIPromptWithoutId = Omit<AIPrompt, '_id'>;
 
 export interface AIPromptDTO {
   _id: string;
@@ -198,364 +452,88 @@ export interface EvaluateVideoInput {
   score: number; // Nota final (0-10)
   presentation: number; // Calidad de Presentación (0-10)
   functionality: number; // Demostración de Funcionalidades (0-10)
-  technicalQuality: number; // Calidad Técnica del Video (0-10)
+  technicalQuality: number; // Calidad Técnica del Video (Audio/Video) (0-10)
   explanation: number; // Claridad de Explicación (0-10)
   comments: string;
 }
 
 export interface EvaluateRepositoryInput {
   score: number;
-  comments?: string;
-  promptId?: string;
-}
-
-export interface AIAnalysisResult {
-  summary: string;
-  codeQuality: number;
-  documentation: number;
-  functionality: number;
-  gitUsage: number;
-  suggestedScore: number;
-  strengths: string[];
-  improvements: string[];
-  detailedComments: string;
+  comments: string;
+  aiPromptUsed?: string;
+  codeQuality?: number;
+  documentation?: number;
+  functionality?: number;
+  gitUsage?: number;
 }
 
 // ============================================================================
 // GITHUB TYPES
 // ============================================================================
 
-export interface GitHubFileTree {
-  path: string;
-  mode: string;
-  type: 'blob' | 'tree';
-  sha: string;
-  size?: number;
-  url: string;
-}
-
-export interface GitHubCommit {
-  sha: string;
-  commit: {
-    author: {
-      name: string;
-      email: string;
-      date: string;
-    };
-    message: string;
-  };
-  html_url: string;
-}
-
 export interface RepositoryInfo {
   readme: string;
-  fileStructure: GitHubFileTree[];
-  recentCommits: GitHubCommit[];
-  mainCode: string;
-  packageJson?: any;
-  languages?: string[];
+  fileStructure: Array<{
+    path: string;
+    type: string;
+    size?: number;
+  }>;
+  recentCommits: Array<{
+    sha: string;
+    message: string;
+    author: string;
+    date: string;
+  }>;
+  mainFiles: Record<string, string>;
+  stats: {
+    stars: number;
+    forks: number;
+    openIssues: number;
+    languages: Record<string, number>;
+  };
 }
 
 // ============================================================================
-// SESSION TYPES
+// SMART CONTRACT TYPES
 // ============================================================================
 
-export interface SessionData {
+export interface SmartContract {
+  _id?: ObjectId;
   email: string;
-  roles: UserRole[];
-  isLoggedIn: boolean;
+  privateKey: string;
+  folder: string;
+  rpcUrl: string;
+  transactions: Record<string, unknown>; // JSON with transactions
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// ============================================================================
-// API RESPONSE TYPES
-// ============================================================================
-
-export interface ApiSuccessResponse<T = any> {
-  success: true;
-  data?: T;
-  message?: string;
+export interface SmartContractDTO {
+  _id: string;
+  email: string;
+  folder: string;
+  rpcUrl: string;
+  transactions: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface ApiErrorResponse {
-  success: false;
-  error: string;
-  code?: string;
+export interface CreateSmartContractInput {
+  email: string;
+  privateKey: string;
+  folder: string;
+  rpcUrl: string;
+  transactions: Record<string, unknown>;
 }
 
-export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse;
-
-// ============================================================================
-// PAGINATION TYPES
-// ============================================================================
-
-export interface PaginationParams {
-  page: number;
-  limit: number;
-}
-
-export interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
-export interface PaginatedResponse<T> {
-  items: T[];
-  pagination: PaginationMeta;
-}
-
-// ============================================================================
-// QUERY TYPES
-// ============================================================================
-
-export interface UserQueryParams extends Partial<PaginationParams> {
-  roles?: UserRole[];
-  search?: string;
-}
-
-export interface ProjectQueryParams extends Partial<PaginationParams> {
-  studentEmail?: string;
-  status?: ProjectStatus;
-}
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-export const USER_ROLES: Record<UserRole, string> = {
-  pending: 'Pendiente',
-  student: 'Estudiante',
-  teacher: 'Profesor',
-  admin: 'Administrador'
-};
-
-export const PROJECT_STATUSES: Record<ProjectStatus, string> = {
-  pending: 'Pendiente',
-  submitted: 'Enviado',
-  evaluated: 'Evaluado'
-};
-
-export const SCORE_RANGES = {
-  MIN: 0,
-  MAX: 10
-} as const;
-
-export const MAGIC_LINK_EXPIRY_MINUTES = 15;
-
-export const PAGINATION_DEFAULTS = {
-  PAGE: 1,
-  LIMIT: 20,
-  MAX_LIMIT: 100
-} as const;
-
-// ============================================================================
-// TYPE GUARDS
-// ============================================================================
-
-export function isUserRole(value: string): value is UserRole {
-  return ['pending', 'student', 'teacher', 'admin'].includes(value);
-}
-
-export function isProjectStatus(value: string): value is ProjectStatus {
-  return ['pending', 'submitted', 'evaluated'].includes(value);
-}
-
-export function isValidScore(value: number): boolean {
-  return value >= SCORE_RANGES.MIN && value <= SCORE_RANGES.MAX;
-}
-
-export function isApiSuccessResponse<T>(
-  response: ApiResponse<T>
-): response is ApiSuccessResponse<T> {
-  return response.success === true;
-}
-
-export function isApiErrorResponse(
-  response: ApiResponse
-): response is ApiErrorResponse {
-  return response.success === false;
-}
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
-
-export function objectIdToString(id: ObjectId): string {
-  return id.toString();
-}
-
-export function dateToISOString(date: Date): string {
-  return date.toISOString();
-}
-
-export function convertUserToDTO(user: User): UserDTO {
-  // Handle legacy users with 'role' field instead of 'roles'
-  // @ts-ignore - handle legacy field
-  const roles = user.roles || (user.role ? [user.role] : ['pending']);
-
+export function convertSmartContractToDTO(smartContract: SmartContract): SmartContractDTO {
   return {
-    email: user.email,
-    roles: roles,
-    name: user.name,
-    createdAt: dateToISOString(user.createdAt),
-    updatedAt: dateToISOString(user.updatedAt),
-    lastLogin: user.lastLogin ? dateToISOString(user.lastLogin) : null,
-    isActive: user.isActive
+    _id: smartContract._id!.toString(),
+    email: smartContract.email,
+    folder: smartContract.folder,
+    rpcUrl: smartContract.rpcUrl,
+    transactions: smartContract.transactions,
+    createdAt: dateToISOString(smartContract.createdAt),
+    updatedAt: dateToISOString(smartContract.updatedAt)
   };
-}
-
-export function convertProjectToDTO(project: Project): ProjectDTO {
-  return {
-    _id: project._id ? objectIdToString(project._id) : '',
-    name: project.name,
-    studentEmail: project.studentEmail,
-    repositoryUrl: project.repositoryUrl,
-    videoUrl: project.videoUrl,
-    course: project.course,
-    edition: project.edition,
-    submissionDate: dateToISOString(project.submissionDate),
-    createdAt: dateToISOString(project.createdAt),
-    updatedAt: dateToISOString(project.updatedAt),
-    status: project.status,
-    evaluations: project.evaluations
-      ? {
-          videoDemo: project.evaluations.videoDemo
-            ? {
-                score: project.evaluations.videoDemo.score,
-                presentation: project.evaluations.videoDemo.presentation,
-                functionality: project.evaluations.videoDemo.functionality,
-                technicalQuality: project.evaluations.videoDemo.technicalQuality,
-                explanation: project.evaluations.videoDemo.explanation,
-                comments: project.evaluations.videoDemo.comments,
-                evaluatedBy: project.evaluations.videoDemo.evaluatedBy,
-                evaluatedAt: dateToISOString(
-                  project.evaluations.videoDemo.evaluatedAt
-                )
-              }
-            : undefined,
-          repository: project.evaluations.repository
-            ? {
-                score: project.evaluations.repository.score,
-                comments: project.evaluations.repository.comments,
-                aiAnalysis: project.evaluations.repository.aiAnalysis,
-                codeQuality: project.evaluations.repository.codeQuality,
-                documentation: project.evaluations.repository.documentation,
-                functionality: project.evaluations.repository.functionality,
-                gitUsage: project.evaluations.repository.gitUsage,
-                evaluatedBy: project.evaluations.repository.evaluatedBy,
-                evaluatedAt: dateToISOString(
-                  project.evaluations.repository.evaluatedAt
-                )
-              }
-            : undefined
-        }
-      : undefined
-  };
-}
-
-export function convertPromptToDTO(prompt: AIPrompt): AIPromptDTO {
-  return {
-    _id: prompt._id ? objectIdToString(prompt._id) : '',
-    name: prompt.name,
-    prompt: prompt.prompt,
-    isActive: prompt.isActive,
-    createdBy: prompt.createdBy,
-    createdAt: dateToISOString(prompt.createdAt),
-    updatedAt: dateToISOString(prompt.updatedAt)
-  };
-}
-
-export function calculateAverageScore(
-  project: Project | ProjectDTO
-): number | null {
-  const scores: number[] = [];
-
-  if (project.evaluations?.videoDemo?.score) {
-    scores.push(project.evaluations.videoDemo.score);
-  }
-
-  if (project.evaluations?.repository?.score) {
-    scores.push(project.evaluations.repository.score);
-  }
-
-  if (scores.length === 0) return null;
-
-  return scores.reduce((acc, score) => acc + score, 0) / scores.length;
-}
-
-export function isProjectEditable(project: Project | ProjectDTO): boolean {
-  const submissionDate =
-    typeof project.submissionDate === 'string'
-      ? new Date(project.submissionDate)
-      : project.submissionDate;
-
-  return new Date() < submissionDate && project.status !== 'evaluated';
-}
-
-export function formatScore(score: number): string {
-  return score.toFixed(1);
-}
-
-export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('es-ES', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-}
-
-export function formatDateTime(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('es-ES', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-// ============================================================================
-// ERROR TYPES
-// ============================================================================
-
-export class AppError extends Error {
-  constructor(
-    public message: string,
-    public statusCode: number = 500,
-    public code?: string
-  ) {
-    super(message);
-    this.name = 'AppError';
-  }
-}
-
-export class ValidationError extends AppError {
-  constructor(message: string) {
-    super(message, 400, 'VALIDATION_ERROR');
-    this.name = 'ValidationError';
-  }
-}
-
-export class AuthenticationError extends AppError {
-  constructor(message: string = 'No autenticado') {
-    super(message, 401, 'AUTHENTICATION_ERROR');
-    this.name = 'AuthenticationError';
-  }
-}
-
-export class AuthorizationError extends AppError {
-  constructor(message: string = 'No autorizado') {
-    super(message, 403, 'AUTHORIZATION_ERROR');
-    this.name = 'AuthorizationError';
-  }
-}
-
-export class NotFoundError extends AppError {
-  constructor(resource: string = 'Recurso') {
-    super(`${resource} no encontrado`, 404, 'NOT_FOUND');
-    this.name = 'NotFoundError';
-  }
 }

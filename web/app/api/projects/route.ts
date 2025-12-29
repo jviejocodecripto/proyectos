@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/session';
+import { requireAuth, getEmailFromRequest } from '@/lib/auth/session';
+import { extractTokenFromHeader, verifyStudentToken } from '@/lib/auth/jwt';
 import { createProject, findProjects } from '@/lib/db/projects';
 import { createProjectSchema, createProjectAsTeacherSchema, getFirstError } from '@/lib/utils/validation';
+import { findUserByEmail } from '@/lib/db/users';
 import { convertProjectToDTO } from '@/types';
 import { z } from 'zod';
 import type { ApiResponse, ProjectDTO, PaginatedResponse } from '@/types';
@@ -24,12 +26,9 @@ export async function GET(req: NextRequest) {
     // Build query based on role
     const queryParams: any = { page, limit };
 
-    // Students can only see their own projects
-    const isStudent = user.roles.includes('student') &&
-                      !user.roles.includes('teacher') &&
-                      !user.roles.includes('admin');
-
-    if (isStudent) {
+    // Students can only see their own projects (even if they have other roles)
+    // If user has student role, filter by their email
+    if (user.roles.includes('student')) {
       queryParams.studentEmail = user.email;
     }
 
@@ -81,8 +80,88 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    // Require authentication
-    const user = await requireAuth();
+    // Get email from JWT token or session
+    let userEmail: string | null = null;
+    
+    // Try JWT token first
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader) {
+      const token = extractTokenFromHeader(authHeader);
+      if (token) {
+        try {
+          const payload = await verifyStudentToken(token);
+          userEmail = payload.email;
+        } catch (error: any) {
+          // JWT verification failed, try session
+          try {
+            const user = await requireAuth();
+            userEmail = user.email;
+          } catch (sessionError: any) {
+            // Both failed
+            const response: ApiResponse = {
+              success: false,
+              error: 'No autenticado. Proporciona un token JWT válido en el header Authorization o inicia sesión',
+              code: 'UNAUTHORIZED'
+            };
+            return NextResponse.json(response, { status: 401 });
+          }
+        }
+      } else {
+        // No token in header, try session
+        try {
+          const user = await requireAuth();
+          userEmail = user.email;
+        } catch (sessionError: any) {
+          const response: ApiResponse = {
+            success: false,
+            error: 'No autenticado',
+            code: 'UNAUTHORIZED'
+          };
+          return NextResponse.json(response, { status: 401 });
+        }
+      }
+    } else {
+      // No Authorization header, try session
+      try {
+        const user = await requireAuth();
+        userEmail = user.email;
+      } catch (sessionError: any) {
+        const response: ApiResponse = {
+          success: false,
+          error: 'No autenticado',
+          code: 'UNAUTHORIZED'
+        };
+        return NextResponse.json(response, { status: 401 });
+      }
+    }
+
+    if (!userEmail) {
+      console.error('POST /api/projects - No userEmail found after authentication');
+      const response: ApiResponse = {
+        success: false,
+        error: 'No autenticado - no se pudo obtener el email del usuario',
+        code: 'UNAUTHORIZED'
+      };
+      return NextResponse.json(response, { status: 401 });
+    }
+
+    console.log('POST /api/projects - User email:', userEmail);
+
+    // Get user from database to check roles
+    const user = await findUserByEmail(userEmail);
+    if (!user || !user.isActive) {
+      console.error('POST /api/projects - User not found or inactive:', { userEmail, user: user ? { email: user.email, isActive: user.isActive } : null });
+      const response: ApiResponse = {
+        success: false,
+        error: 'Usuario no encontrado o inactivo',
+        code: 'USER_NOT_FOUND'
+      };
+      return NextResponse.json(response, { status: 403 });
+    }
+
+    // Handle legacy users with 'role' field instead of 'roles'
+    // @ts-ignore - handle legacy field
+    const roles = user.roles || (user.role ? [user.role] : []);
 
     // Parse request body
     const body = await req.json();
@@ -92,15 +171,16 @@ export async function POST(req: NextRequest) {
     let studentEmail: string;
     let validatedData: any;
 
-    const isStudent = user.roles.includes('student') &&
-                      !user.roles.includes('teacher') &&
-                      !user.roles.includes('admin');
-    const isTeacherOrAdmin = user.roles.includes('teacher') || user.roles.includes('admin');
+    // If user has student role, they create projects for themselves
+    // Even if they also have teacher/admin roles, if they have student role, use student flow
+    const hasStudentRole = roles.includes('student');
+    const isTeacherOrAdmin = roles.includes('teacher') || roles.includes('admin');
 
-    if (isStudent) {
-      // Students create projects for themselves
+    if (hasStudentRole) {
+      // Students (or users with student role) create projects for themselves
       validatedData = createProjectSchema.parse(body);
-      studentEmail = user.email;
+      studentEmail = userEmail;
+      console.log('POST /api/projects - Student creating project, studentEmail:', studentEmail, 'roles:', roles);
     } else if (isTeacherOrAdmin) {
       // Teachers and admins must specify student email
       validatedData = createProjectAsTeacherSchema.parse(body);
@@ -117,6 +197,19 @@ export async function POST(req: NextRequest) {
       };
       return NextResponse.json(response, { status: 403 });
     }
+
+    // Validate studentEmail before creating project
+    if (!studentEmail || typeof studentEmail !== 'string') {
+      console.error('POST /api/projects - Invalid studentEmail:', { studentEmail, type: typeof studentEmail, userEmail, hasStudentRole, isTeacherOrAdmin, roles });
+      const response: ApiResponse = {
+        success: false,
+        error: `studentEmail inválido: se esperaba string, se recibió ${typeof studentEmail}`,
+        code: 'VALIDATION_ERROR'
+      };
+      return NextResponse.json(response, { status: 400 });
+    }
+
+    console.log('POST /api/projects - Creating project with studentEmail:', studentEmail, 'data:', JSON.stringify(validatedData, null, 2));
 
     // Create project
     const project = await createProject(studentEmail, validatedData);

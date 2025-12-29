@@ -117,6 +117,31 @@ export async function requireAuth(): Promise<SessionData> {
 }
 
 /**
+ * Get email from JWT token or session
+ * Tries JWT first, then falls back to session
+ */
+export async function getEmailFromRequest(req: Request): Promise<string | null> {
+  // Try JWT token first
+  const authHeader = req.headers.get('Authorization');
+  if (authHeader) {
+    try {
+      const { extractTokenFromHeader, verifyStudentToken } = await import('./jwt');
+      const token = extractTokenFromHeader(authHeader);
+      if (token) {
+        const payload = await verifyStudentToken(token);
+        return payload.email;
+      }
+    } catch (error) {
+      // JWT verification failed, continue to session check
+    }
+  }
+
+  // Fall back to session
+  const user = await getCurrentUser();
+  return user?.email || null;
+}
+
+/**
  * Require specific role (throws if not authorized)
  */
 export async function requireRole(allowedRoles: string[]): Promise<SessionData> {

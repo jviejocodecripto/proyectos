@@ -1,0 +1,197 @@
+### Variables de Entorno - Endpoints con JWT Token
+### Base URL (ajusta según tu entorno)
+@baseUrl = http://localhost:3006
+@token = eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6Imp2aWVqb0BnbWFpbC5jb20iLCJleHBpcmVzQXQiOiIyMDI2LTEyLTIzVDA5OjE0OjUxLjQ1NFoiLCJpYXQiOjE3NjY0ODEyOTEsImV4cCI6MTc5ODAxNzI5MX0.gBUCgZk5OZE0Wk8Dhp7Lwo-ZCHVhqaOyf2-1mOirJkY
+
+### 1. Obtener variables de entorno de un proyecto específico (DEV)
+### GET /api/projects/:id/env-configs?environment=dev
+GET {{baseUrl}}/api/projects/694c302cdae04222a91d0485/env-configs?environment=dev
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+###
+
+### 2. Obtener variables de entorno de un proyecto específico (PRO)
+### GET /api/projects/:id/env-configs?environment=pro
+GET {{baseUrl}}/api/projects/694c302cdae04222a91d0485/env-configs?environment=pro
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+###
+
+### 3. Obtener variables globales del estudiante (DEV)
+### GET /api/student/env-configs/global?environment=dev
+GET {{baseUrl}}/api/student/env-configs/global?environment=dev
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+###
+
+### 4. Obtener variables globales del estudiante (PRO)
+### GET /api/student/env-configs/global?environment=pro
+GET {{baseUrl}}/api/student/env-configs/global?environment=dev
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+###
+
+### NOTAS:
+### - Reemplaza "507f1f77bcf86cd799439011" con un ID de proyecto real de tu base de datos
+### - El token JWT contiene el email: jviejo@gmail.com
+### - Los endpoints también aceptan autenticación por sesión si no se proporciona el header Authorization
+### - El parámetro environment es obligatorio y debe ser "dev" o "pro"
+
+###
+### ============================================================================
+### ENDPOINTS PARA CREAR ESTUDIANTES Y PROYECTOS
+### ============================================================================
+
+### 5. Crear un nuevo estudiante (requiere autenticación de admin)
+### POST /api/students
+POST {{baseUrl}}/api/students
+Content-Type: application/json
+
+{
+  "email": "nuevo.estudiante@example.com",
+  "name": "Nuevo Estudiante",
+  "isActive": true
+}
+
+###
+### NOTA: Este endpoint requiere autenticación de administrador (sesión o token)
+
+### 6. Crear un nuevo proyecto (requiere autenticación)
+### POST /api/projects
+### Para estudiantes: se crea automáticamente con su email
+POST {{baseUrl}}/api/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Mi Nuevo Proyecto",
+  "repositoryUrl": "https://github.com/usuario/repositorio",
+  "videoUrl": "https://youtube.com/watch?v=ejemplo",
+  "course": "Curso de Desarrollo Web",
+  "edition": "2025-01"
+}
+
+###
+### 7. Crear un proyecto para un estudiante específico (requiere rol teacher/admin)
+### POST /api/projects
+POST {{baseUrl}}/api/projects
+Content-Type: application/json
+
+{
+  "name": "Proyecto para Estudiante",
+  "repositoryUrl": "https://github.com/usuario/repositorio",
+  "videoUrl": "https://youtube.com/watch?v=ejemplo",
+  "course": "Curso de Desarrollo Web",
+  "edition": "2025-01",
+  "studentEmail": "estudiante@example.com"
+}
+
+###
+### NOTAS:
+### - Para crear estudiantes: requiere autenticación de administrador
+### - Para crear proyectos como estudiante: solo incluye los campos del proyecto (sin studentEmail)
+### - Para crear proyectos como teacher/admin: incluye studentEmail para asignar el proyecto a un estudiante específico
+### - El videoUrl es opcional
+### - La repositoryUrl debe ser una URL válida de GitHub
+
+###
+### ============================================================================
+### ENDPOINTS DE TOKENS (6 dígitos para generar JWT)
+### ============================================================================
+
+### 8. Generar un código de 6 dígitos aleatorio
+### POST /api/tokens
+POST {{baseUrl}}/api/tokens
+Content-Type: application/json
+
+###
+### Respuesta: { "success": true, "data": { "_id": "...", "code": "123456", "createdAt": "...", "used": false } }
+
+### 9. Validar código y generar JWT token
+### POST /api/tokens/validate
+POST {{baseUrl}}/api/tokens/validate
+Content-Type: application/json
+
+{
+  "code": "123456",
+  "email": "estudiante@example.com"
+}
+
+###
+### Respuesta:
+### {
+###   "token": "eyJhbGciOiJIUzI1NiJ9...",
+###   "email": "estudiante@example.com",
+###   "serverUrl": "http://localhost:3006",
+###   "createdAt": "2025-12-23T09:14:51.790Z",
+###   "envVars": [
+###     {
+###       "_id": "...",
+###       "projectId": "global",
+###       "studentEmail": null,  // null para admin globals
+###       "environment": "dev",
+###       "scope": "server",
+###       "key": "DATABASE_URL",
+###       "value": "...",
+###       "createdAt": "...",
+###       "updatedAt": "..."
+###     },
+###     {
+###       "_id": "...",
+###       "projectId": "global",
+###       "studentEmail": "estudiante@example.com",  // email para student globals
+###       "environment": "dev",
+###       "scope": "client",
+###       "key": "NEXT_PUBLIC_API_URL",
+###       "value": "...",
+###       "createdAt": "...",
+###       "updatedAt": "..."
+###     }
+###   ]
+### }
+
+### 10. Leer token por ID
+### GET /api/tokens/:id
+GET {{baseUrl}}/api/tokens/507f1f77bcf86cd799439011
+Content-Type: application/json
+
+###
+### Upload Smart Contract
+POST http://localhost:3000/api/uploadSmartContract
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6Imp2aWVqb0BnbWFpbC5jb20iLCJleHBpcmVzQXQiOiIyMDI2LTEyLTIzVDA5OjE0OjUxLjQ1NFoiLCJpYXQiOjE3NjY0ODEyOTEsImV4cCI6MTc5ODAxNzI5MX0.gBUCgZk5OZE0Wk8Dhp7Lwo-ZCHVhqaOyf2-1mOirJkY
+Content-Type: application/json
+
+{
+  "email": "jviejo@gmail.com",
+  "privateKey": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "folder": "/path/to/contract",
+  "rpcUrl": "http://localhost:8545",
+  "transactions": {
+    "deploy": {
+      "hash": "0xabc123...",
+      "blockNumber": 12345
+    },
+    "interactions": [
+      {
+        "method": "transfer",
+        "hash": "0xdef456...",
+        "blockNumber": 12346
+      }
+    ]
+  }
+}
+
+### NOTAS:
+### - Todos los endpoints de tokens son públicos (no requieren autenticación)
+### - El código de 6 dígitos se genera aleatoriamente
+### - Al validar el código, se genera un JWT con 12 meses de expiración
+### - El código solo puede usarse una vez
+### - Reemplaza "123456" con un código real generado por el endpoint POST /api/tokens
+### - Reemplaza "507f1f77bcf86cd799439011" con un ID de token real
+### - El endpoint /api/uploadSmartContract requiere autenticación JWT
+### - El email en el body debe coincidir con el email del token JWT
+

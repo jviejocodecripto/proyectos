@@ -4,7 +4,19 @@ import { sessionOptions } from './lib/auth/session';
 import type { SessionData } from '@/types';
 
 // Public routes that don't require authentication
-const publicRoutes = ['/login', '/api/auth/request-magic-link', '/api/auth/verify'];
+const publicRoutes = ['/login', '/api/auth/request-magic-link', '/api/auth/verify', '/api/tokens'];
+
+// Routes that handle their own authentication (JWT tokens)
+const jwtAuthRoutes = [
+  '/api/projects/',
+  '/api/student/env-configs',
+  '/api/uploadSmartContract'
+];
+
+// Admin routes that require admin role (handled in the route itself)
+const adminRoutes = [
+  '/api/admin'
+];
 
 // Route permissions by role
 const roleRoutes: Record<string, string[]> = {
@@ -23,6 +35,11 @@ export async function proxy(req: NextRequest) {
 
   // Allow public routes
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
+
+  // Allow routes that handle their own JWT authentication
+  if (jwtAuthRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
   }
 

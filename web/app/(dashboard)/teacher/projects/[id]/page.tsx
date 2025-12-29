@@ -185,9 +185,14 @@ export default function TeacherProjectDetailsPage({
       {/* Project Info Card */}
       <div className="bg-white rounded-lg shadow">
         <div className="p-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            {project.name}
-          </h1>
+          <div className="flex items-center gap-3 mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">
+              {project.name}
+            </h1>
+            <span className="text-sm text-gray-500 font-mono bg-gray-100 px-3 py-1 rounded">
+              ID: {project._id}
+            </span>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>

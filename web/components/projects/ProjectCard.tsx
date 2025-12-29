@@ -75,9 +75,14 @@ export default function ProjectCard({
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              {project.name}
-            </h3>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {project.name}
+              </h3>
+              <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-0.5 rounded">
+                ID: {project._id}
+              </span>
+            </div>
             <a
               href={project.repositoryUrl}
               target="_blank"

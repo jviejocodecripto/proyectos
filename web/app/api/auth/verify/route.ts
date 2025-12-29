@@ -16,7 +16,19 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Validate magic link
+    // Special case: if token is NOT a magic link (magic links are 64 hex chars),
+    // redirect to code form. This allows external systems to redirect to the code form
+    // Magic links are 32 bytes = 64 hex characters
+    const isMagicLinkToken = /^[a-f0-9]{64}$/i.test(token);
+    
+    if (!isMagicLinkToken) {
+      // This is a code token parameter, redirect to code form
+      return NextResponse.redirect(
+        new URL('/login/code', req.url)
+      );
+    }
+
+    // Validate magic link (normal flow)
     const magicLink = await validateMagicLink(token);
 
     if (!magicLink) {
