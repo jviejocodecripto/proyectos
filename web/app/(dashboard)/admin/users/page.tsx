@@ -31,6 +31,10 @@ export default function AdminUsersPage() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserDTO | null>(null);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
+  const [missingGitLabUsers, setMissingGitLabUsers] = useState<UserDTO[]>([]);
+  const [syncingGitLab, setSyncingGitLab] = useState(false);
+  const [creatingGitLabUser, setCreatingGitLabUser] = useState<string | null>(null);
+  const [creatingAllGitLabUsers, setCreatingAllGitLabUsers] = useState(false);
   const fetchingRef = useRef(false);
 
   const fetchUsers = useCallback(async () => {
@@ -250,6 +254,124 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleSyncGitLab = async () => {
+    try {
+      setSyncingGitLab(true);
+      setError(null);
+
+      const response = await fetch('/api/admin/users/sync-gitlab');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al sincronizar con GitLab');
+      }
+
+      if (data.success && data.data) {
+        setMissingGitLabUsers(data.data.missingUsers || []);
+        if (data.data.missingCount === 0) {
+          setSuccessMessage('Todos los usuarios están sincronizados con GitLab');
+        } else {
+          setSuccessMessage(
+            `Se encontraron ${data.data.missingCount} usuarios que no están en GitLab`
+          );
+        }
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setSyncingGitLab(false);
+    }
+  };
+
+  const handleCreateGitLabUser = async (email: string) => {
+    try {
+      setCreatingGitLabUser(email);
+      setError(null);
+
+      const response = await fetch('/api/admin/users/create-gitlab', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al crear usuario en GitLab');
+      }
+
+      setSuccessMessage(`Usuario ${email} creado en GitLab correctamente`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+
+      // Remove from missing users list
+      setMissingGitLabUsers(prev => prev.filter(user => user.email !== email));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setCreatingGitLabUser(null);
+    }
+  };
+
+  const handleCreateAllGitLabUsers = async () => {
+    if (missingGitLabUsers.length === 0) {
+      return;
+    }
+
+    if (!confirm(`¿Está seguro de crear ${missingGitLabUsers.length} usuarios en GitLab?`)) {
+      return;
+    }
+
+    try {
+      setCreatingAllGitLabUsers(true);
+      setError(null);
+
+      const emails = missingGitLabUsers.map(user => user.email);
+
+      const response = await fetch('/api/admin/users/create-gitlab-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emails })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al crear usuarios en GitLab');
+      }
+
+      if (data.success && data.data) {
+        const { successCount, errorCount, total } = data.data;
+        
+        if (errorCount === 0) {
+          setSuccessMessage(`Todos los usuarios (${successCount}) fueron creados en GitLab correctamente`);
+          setMissingGitLabUsers([]);
+        } else {
+          // Remove successfully created users from the list
+          const successfulEmails = data.data.results
+            .filter((r: { success: boolean }) => r.success)
+            .map((r: { email: string }) => r.email);
+          
+          setMissingGitLabUsers(prev => 
+            prev.filter(user => !successfulEmails.includes(user.email))
+          );
+          
+          setSuccessMessage(
+            `Se crearon ${successCount} de ${total} usuarios en GitLab. ${errorCount} usuarios tuvieron errores.`
+          );
+        }
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setCreatingAllGitLabUsers(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -263,6 +385,26 @@ export default function AdminUsersPage() {
           </p>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={handleSyncGitLab}
+            disabled={syncingGitLab}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg
+              className={`w-5 h-5 ${syncingGitLab ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            {syncingGitLab ? 'Sincronizando...' : 'Sincronizar con GitLab'}
+          </button>
           <button
             onClick={() => setIsBulkModalOpen(true)}
             className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition flex items-center gap-2"
@@ -339,6 +481,140 @@ export default function AdminUsersPage() {
               />
             </svg>
             <p className="text-sm text-red-800">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* GitLab Sync Section */}
+      {missingGitLabUsers.length > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-yellow-900">
+                Usuarios no sincronizados con GitLab
+              </h2>
+              <p className="text-sm text-yellow-700 mt-1">
+                Se encontraron {missingGitLabUsers.length} usuarios que no existen en GitLab
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCreateAllGitLabUsers}
+                disabled={creatingAllGitLabUsers}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creatingAllGitLabUsers ? (
+                  <>
+                    <svg
+                      className="w-4 h-4 animate-spin"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    Sincronizando todos...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    Sincronizar Todos
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setMissingGitLabUsers([])}
+                className="text-yellow-700 hover:text-yellow-900"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {missingGitLabUsers.map((user) => (
+              <div
+                key={user.email}
+                className="bg-white rounded-lg p-4 flex items-center justify-between border border-yellow-200"
+              >
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">{user.name}</div>
+                  <div className="text-sm text-gray-600">{user.email}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Roles: {user.roles.join(', ')}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleCreateGitLabUser(user.email)}
+                  disabled={creatingGitLabUser === user.email}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creatingGitLabUser === user.email ? (
+                    <>
+                      <svg
+                        className="w-4 h-4 animate-spin"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                      Creando...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      Crear en GitLab
+                    </>
+                  )}
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}

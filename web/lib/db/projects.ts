@@ -131,7 +131,8 @@ export async function findProjects(
     page = PAGINATION_DEFAULTS.PAGE,
     limit = PAGINATION_DEFAULTS.LIMIT,
     studentEmail,
-    status
+    status,
+    course
   } = params;
 
   // Build query
@@ -143,6 +144,10 @@ export async function findProjects(
 
   if (status) {
     query.status = status;
+  }
+
+  if (course) {
+    query.course = course;
   }
 
   // Get total count

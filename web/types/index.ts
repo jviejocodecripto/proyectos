@@ -288,6 +288,7 @@ export interface ProjectQueryParams {
   limit?: number;
   studentEmail?: string;
   status?: ProjectStatus;
+  course?: string;
 }
 
 // ============================================================================

@@ -247,3 +247,11 @@ export async function deleteUser(email: string): Promise<boolean> {
   const result = await collection.deleteOne({ email });
   return result.deletedCount > 0;
 }
+
+/**
+ * Get all users (for sync purposes)
+ */
+export async function getAllUsers(): Promise<User[]> {
+  const collection = await getCollection<User>('users');
+  return collection.find({}).toArray();
+}

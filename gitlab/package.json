@@ -1,0 +1,29 @@
+{
+  "name": "gitlab-cli",
+  "version": "1.0.0",
+  "description": "CLI para gestionar usuarios y proyectos en GitLab",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "gitlab-cli": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "keywords": ["gitlab", "cli"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@gitbeaker/rest": "^43.8.0",
+    "commander": "^12.1.0",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.20.6",
+    "typescript": "^5"
+  }
+}
+

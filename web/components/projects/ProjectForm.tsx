@@ -58,15 +58,17 @@ export default function ProjectForm({
     }
   };
 
-  const validateGitHubUrl = (url: string): boolean => {
-    // Permite URLs de GitHub con o sin subdirectorios
+  const validateRepositoryUrl = (url: string): boolean => {
+    // Permite URLs de GitHub o GitLab con o sin subdirectorios
     // Ejemplos válidos:
     // - https://github.com/usuario/repositorio
     // - https://github.com/usuario/repositorio/
     // - https://github.com/usuario/repositorio/tree/main/subdir
-    // - https://github.com/usuario/repositorio/blob/main/subdir/archivo
-    const githubPattern = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/.*)?$/;
-    return githubPattern.test(url);
+    // - https://gitlab.codecrypto.academy/usuario/repositorio
+    // - https://gitlab.codecrypto.academy/usuario/repositorio/
+    // - https://gitlab.codecrypto.academy/usuario/repositorio/-/tree/main/subdir
+    const repositoryPattern = /^https:\/\/(github\.com|gitlab\.codecrypto\.academy)\/[\w-]+\/[\w.-]+(\/.*)?$/;
+    return repositoryPattern.test(url);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,9 +86,9 @@ export default function ProjectForm({
       return;
     }
 
-    if (!validateGitHubUrl(formData.repositoryUrl)) {
+    if (!validateRepositoryUrl(formData.repositoryUrl)) {
       setError(
-        'URL de GitHub inválida. Debe ser del formato: https://github.com/usuario/repositorio (con subdirectorio opcional)'
+        'URL de repositorio inválida. Debe ser del formato: https://github.com/usuario/repositorio o https://gitlab.codecrypto.academy/usuario/repositorio (con subdirectorio opcional)'
       );
       return;
     }
@@ -316,7 +318,7 @@ export default function ProjectForm({
           htmlFor="repositoryUrl"
           className="block text-sm font-medium text-gray-700 mb-2"
         >
-          URL del Repositorio GitHub *
+          URL del Repositorio (GitHub o GitLab) *
         </label>
         <input
           id="repositoryUrl"
@@ -328,17 +330,17 @@ export default function ProjectForm({
               repositoryUrl: e.target.value
             }))
           }
-          placeholder="https://github.com/usuario/repositorio o https://github.com/usuario/repositorio/tree/main/subdir"
+          placeholder="https://github.com/usuario/repositorio o https://gitlab.codecrypto.academy/usuario/repositorio"
           disabled={loading}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <p className="mt-1 text-xs text-gray-500">
-          Ejemplo: https://github.com/usuario/mi-proyecto o https://github.com/usuario/repositorio/tree/main/subdir
+          Ejemplo: https://github.com/usuario/mi-proyecto o https://gitlab.codecrypto.academy/usuario/mi-proyecto
         </p>
         {formData.repositoryUrl &&
-          !validateGitHubUrl(formData.repositoryUrl) && (
+          !validateRepositoryUrl(formData.repositoryUrl) && (
             <p className="mt-1 text-xs text-red-600">
-              ⚠️ La URL no parece ser un repositorio de GitHub válido
+              ⚠️ La URL no parece ser un repositorio válido (GitHub o GitLab)
             </p>
           )}
       </div>
